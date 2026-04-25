@@ -1,7 +1,6 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // CORS headers for local development
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -9,9 +8,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    return res.status(500).json({ error: "ANTHROPIC_API_KEY 未設定，請到 Vercel 環境變數中設定" });
+    return res.status(500).json({ error: "GEMINI_API_KEY 未設定" });
   }
 
   const { image, mediaType } = req.body;
@@ -19,32 +18,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: "未提供圖片" });
   }
 
-  try {
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 1024,
-        messages: [
-          {
-            role: "user",
-            content: [
-              {
-                type: "image",
-                source: {
-                  type: "base64",
-                  media_type: mediaType || "image/jpeg",
-                  data: image,
-                },
-              },
-              {
-                type: "text",
-                text: `你是一個專業的收據辨識助手。請仔細分析這張收據圖片，提取以下資訊並以 JSON 格式回傳。
+  const prompt = `你是一個專業的收據辨識助手。請仔細分析這張收據圖片，提取以下資訊並以 JSON 格式回傳。
 
 回傳格式（只回傳 JSON，不要加任何其他文字或 markdown 標記）：
 {
@@ -65,24 +39,46 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 4. 如果看不清某些品項，盡量推測
 5. 如果圖片中有折扣、税金等，也列為 items
 6. total_amount 應該是收據上的最終合計金額
-7. 如果無法辨識為收據，回傳 {"error": "無法辨識此圖片為收據"}`,
-              },
-            ],
+7. 如果無法辨識為收據，回傳 {"error": "無法辨識此圖片為收據"}`;
+
+  try {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                {
+                  inline_data: {
+                    mime_type: mediaType || "image/jpeg",
+                    data: image,
+                  },
+                },
+                { text: prompt },
+              ],
+            },
+          ],
+          generationConfig: {
+            temperature: 0.1,
+            maxOutputTokens: 1024,
           },
-        ],
-      }),
-    });
+        }),
+      }
+    );
 
     const data = await response.json();
 
     if (!response.ok) {
-      console.error("Anthropic API error:", JSON.stringify(data));
+      console.error("Gemini API error:", JSON.stringify(data));
       return res.status(response.status).json({
-        error: data.error?.message || "Claude API 呼叫失敗",
+        error: data.error?.message || "Gemini API 呼叫失敗",
       });
     }
 
-    const text = data.content?.[0]?.text || "";
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
 
     // Try to parse JSON from the response
     const jsonMatch = text.match(/\{[\s\S]*\}/);

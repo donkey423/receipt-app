@@ -76,3 +76,14 @@ export async function deleteReceipt(id: string): Promise<void> {
     throw new Error(err.message || `刪除失敗 (${res.status})`);
   }
 }
+
+export async function deleteAllReceipts(): Promise<void> {
+  const res = await fetch(`${SUPABASE_URL}/receipts?id=not.is.null`, {
+    method: "DELETE",
+    headers,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || `全部刪除失敗 (${res.status})`);
+  }
+}

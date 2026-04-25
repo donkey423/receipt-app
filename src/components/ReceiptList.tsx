@@ -95,6 +95,7 @@ interface Props {
 export default function ReceiptList({ receipts, loading, onDelete }: Props) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [deletingAll, setDeletingAll] = useState(false);
 
   const handleDelete = async (id: string) => {
     if (!confirm("確定要刪除這筆記錄嗎？")) return;
@@ -110,14 +111,41 @@ export default function ReceiptList({ receipts, loading, onDelete }: Props) {
     }
   };
 
+  const handleDeleteAll = async () => {
+    if (!confirm(`確定要刪除全部 ${receipts.length} 筆記錄嗎？\n\n此操作無法復原！`)) return;
+    setDeletingAll(true);
+    try {
+      const { deleteAllReceipts } = await import("../lib/supabase");
+      await deleteAllReceipts();
+      onDelete();
+    } catch (err: any) {
+      alert(err.message || "全部刪除失敗");
+    } finally {
+      setDeletingAll(false);
+    }
+  };
+
   const groups = groupByDate(receipts);
 
   return (
     <div style={s.page}>
       <div style={s.wrap}>
         <div style={s.title}>📋 消費清單</div>
-        <div style={{ textAlign: "center", fontSize: 12, color: "#94a3b8", marginBottom: 4 }}>
-          共 {receipts.length} 筆記錄
+        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 12, marginBottom: 4 }}>
+          <span style={{ fontSize: 12, color: "#94a3b8" }}>共 {receipts.length} 筆記錄</span>
+          {receipts.length > 0 && (
+            <button
+              onClick={handleDeleteAll}
+              disabled={deletingAll}
+              style={{
+                border: "none", background: "#fee2e2", color: "#dc2626",
+                borderRadius: 8, padding: "4px 12px", fontSize: 12,
+                fontWeight: 600, cursor: "pointer", opacity: deletingAll ? 0.5 : 1,
+              }}
+            >
+              {deletingAll ? "刪除中..." : "🗑️ 全部刪除"}
+            </button>
+          )}
         </div>
 
         {loading ? (

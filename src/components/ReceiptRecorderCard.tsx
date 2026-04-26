@@ -332,19 +332,40 @@ export default function ReceiptRecorderCard({ onSaved, receiptCount }: Props) {
     }
   };
 
-  const handleManualSubmit = (e: FormEvent<HTMLFormElement>) => {
+  const handleManualSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const amount = Number(manualForm.amount);
     if (!amount || amount <= 0) return;
-    const dest = DESTINATIONS.find(d => d.id === destinationId);
-    setManualReceipt({
-      currency: dest?.currency || "TWD", total_amount: amount,
-      category: manualForm.category, icon: categoryIconMap[manualForm.category],
-      date: manualForm.date,
-      note: manualForm.note,
-      items: [{ name: "手動記帳", price: amount, quantity: 1 }],
-    });
-    setManualSaved(false);
+    
+    setManualSaving(true); setError("");
+    try {
+      const dest = DESTINATIONS.find(d => d.id === destinationId);
+      const currency = dest?.currency || "TWD";
+      const twdAmount = currency === "TWD" ? amount : Math.round(amount * exchangeRate);
+
+      await createReceipt({
+        currency,
+        total_amount: amount,
+        twd_amount: twdAmount,
+        exchange_rate: currency !== "TWD" ? exchangeRate : null,
+        category: manualForm.category,
+        icon: categoryIconMap[manualForm.category],
+        items: [{ name: "手動記帳", price: amount, quantity: 1 }],
+        created_at: new Date(manualForm.date).toISOString(),
+        note: manualForm.note || null,
+      });
+      
+      setManualSaved(true);
+      onSaved?.();
+      // Reset form after 1.5s
+      setTimeout(() => {
+        handleReset();
+      }, 1500);
+    } catch (err: any) {
+      setError(err.message || "儲存失敗");
+    } finally {
+      setManualSaving(false);
+    }
   };
 
   const handleResultEdit = (index: number, updates: Partial<ReceiptData>) => {
@@ -551,10 +572,15 @@ export default function ReceiptRecorderCard({ onSaved, receiptCount }: Props) {
                   onChange={(e) => setManualForm((p) => ({ ...p, note: e.target.value }))} />
               </div>
 
-              <button type="submit" style={{
-                ...s.btn, background: "linear-gradient(135deg, #059669, #10b981)", color: "#fff",
+              <button type="submit" disabled={manualSaving || manualSaved} style={{
+                ...s.btn, 
+                background: manualSaved ? "#10b981" : "linear-gradient(135deg, #059669, #10b981)", 
+                color: "#fff",
                 boxShadow: "0 4px 12px rgba(5,150,105,0.3)",
-              }}>✅ 確認新增</button>
+                opacity: manualSaving ? 0.7 : 1,
+              }}>
+                {manualSaving ? "⌛ 儲存中..." : manualSaved ? "✅ 已儲存" : "💾 確定儲存"}
+              </button>
             </form>
           )}
         </div>
@@ -629,23 +655,25 @@ export default function ReceiptRecorderCard({ onSaved, receiptCount }: Props) {
                           />
                         </div>
 
-                        <div style={{ background: "#fef2f2", borderRadius: 12, padding: "12px 14px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                          <div style={{ fontSize: 13, fontWeight: 700, color: "#ef4444" }}>總額 (TWD)</div>
-                          {r.receipt.currency !== "TWD" ? (
-                            <div style={{ fontSize: 24, fontWeight: 900, color: "#ef4444" }}>
-                              NT$ {convertTwd(r.receipt)?.toLocaleString()}
-                            </div>
-                          ) : (
-                            <div style={{ display: "flex", alignItems: "center", gap: 4, width: "60%" }}>
-                              <span style={{ fontSize: 18, fontWeight: 900, color: "#ef4444" }}>NT$</span>
-                              <input
-                                type="number"
-                                style={{ ...s.input, padding: "2px 8px", fontSize: 20, fontWeight: 900, color: "#ef4444", flex: 1, minWidth: 0, textAlign: "right", background: "transparent", border: "none", borderBottom: "2px solid #fecaca", borderRadius: 0 }}
-                                value={r.receipt.total_amount}
-                                onChange={(e) => handleResultEdit(i, { total_amount: Number(e.target.value) })}
-                              />
-                            </div>
-                          )}
+                        <div style={{ background: "#fef2f2", borderRadius: 12, padding: "10px 14px", display: "flex", flexDirection: "column", gap: 4 }}>
+                          <div style={{ fontSize: 12, fontWeight: 700, color: "#ef4444", opacity: 0.8 }}>總額 (TWD)</div>
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                            {r.receipt.currency !== "TWD" ? (
+                              <div style={{ fontSize: 26, fontWeight: 900, color: "#ef4444" }}>
+                                NT$ {convertTwd(r.receipt)?.toLocaleString()}
+                              </div>
+                            ) : (
+                              <div style={{ display: "flex", alignItems: "center", gap: 4, width: "100%" }}>
+                                <span style={{ fontSize: 20, fontWeight: 900, color: "#ef4444" }}>NT$</span>
+                                <input
+                                  type="number"
+                                  style={{ ...s.input, padding: "2px 0", fontSize: 26, fontWeight: 900, color: "#ef4444", flex: 1, minWidth: 0, textAlign: "right", background: "transparent", border: "none", borderBottom: "2px solid #fecaca", borderRadius: 0 }}
+                                  value={r.receipt.total_amount}
+                                  onChange={(e) => handleResultEdit(i, { total_amount: Number(e.target.value) })}
+                                />
+                              </div>
+                            )}
+                          </div>
                         </div>
 
                         {r.receipt.currency !== "TWD" && (

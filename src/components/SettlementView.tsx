@@ -36,20 +36,13 @@ const s: Record<string, React.CSSProperties> = {
   empty: { textAlign: "center", padding: "40px 20px", color: "#94a3b8" },
 };
 
-export default function SettlementView() {
-  const [loading, setLoading] = useState(true);
-  const [receipts, setReceipts] = useState<Receipt[]>([]);
-  const [selectedPerson, setSelectedPerson] = useState<string>("我 (我自己)");
+interface Props {
+  receipts: Receipt[];
+  loading: boolean;
+}
 
-  useEffect(() => {
-    fetchReceipts().then(res => {
-      setReceipts(res);
-      setLoading(false);
-    }).catch(err => {
-      console.error(err);
-      setLoading(false);
-    });
-  }, []);
+export default function SettlementView({ receipts, loading }: Props) {
+  const [selectedPerson, setSelectedPerson] = useState<string>("我 (我自己)");
 
   const people = Array.from(new Set(receipts.map(r => r.note || "我 (我自己)")));
   if (!people.includes("我 (我自己)")) people.unshift("我 (我自己)");

@@ -119,7 +119,7 @@ export default function App() {
         <ReceiptStats receipts={receipts} loading={loading} />
       </div>
       <div style={{ display: tab === "settlement" ? "block" : "none" }}>
-        <SettlementView />
+        <SettlementView receipts={receipts} loading={loading} />
       </div>
 
       {/* Bottom Nav */}

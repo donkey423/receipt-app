@@ -36,7 +36,6 @@ type InputMode = "camera" | "manual";
 
 interface ManualFormState {
   amount: string;
-  currency: string;
   category: string;
   date: string;
 }
@@ -130,8 +129,13 @@ const s: Record<string, React.CSSProperties> = {
   },
   uploadZone: {
     display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-    minHeight: 180, border: "2px dashed #cbd5e1", borderRadius: 20, background: "#f8fafc",
-    cursor: "pointer", padding: "24px 16px", textAlign: "center", gap: 8,
+    minHeight: 180, border: "2px dashed #cbd5e1", borderRadius: 24, background: "linear-gradient(180deg, #f8fafc, #f1f5f9)",
+    cursor: "pointer", padding: "24px 16px", textAlign: "center", gap: 12, transition: "border 0.2s, background 0.2s",
+  },
+  cameraIconWrap: {
+    width: 68, height: 68, borderRadius: 34, background: "linear-gradient(135deg, #3b82f6, #2563eb)",
+    display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, color: "#fff",
+    boxShadow: "0 8px 20px rgba(37,99,235,0.3)"
   },
   btn: {
     width: "100%", borderRadius: 16, padding: "14px 16px", fontSize: 15,
@@ -158,7 +162,6 @@ export default function ReceiptRecorderCard({ onSaved, receiptCount }: Props) {
   const [isRateLoading, setIsRateLoading] = useState(false);
   const [manualForm, setManualForm] = useState<ManualFormState>({ 
     amount: "", 
-    currency: "JPY", 
     category: "餐飲",
     date: new Date().toISOString().split("T")[0] 
   });
@@ -320,9 +323,11 @@ export default function ReceiptRecorderCard({ onSaved, receiptCount }: Props) {
     e.preventDefault();
     const amount = Number(manualForm.amount);
     if (!amount || amount <= 0) return;
+    const dest = DESTINATIONS.find(d => d.id === destinationId);
     setManualReceipt({
-      currency: manualForm.currency, total_amount: amount,
+      currency: dest?.currency || "TWD", total_amount: amount,
       category: manualForm.category, icon: categoryIconMap[manualForm.category],
+      date: manualForm.date,
       items: [{ name: "手動記帳", price: amount, quantity: 1 }],
     });
     setManualSaved(false);
@@ -375,7 +380,7 @@ export default function ReceiptRecorderCard({ onSaved, receiptCount }: Props) {
   const handleReset = () => {
     setImages([]); setResults([]); setError("");
     setManualReceipt(null); setManualSaved(false);
-    setManualForm({ amount: "", currency: "TWD", category: "餐飲", date: new Date().toISOString().split("T")[0] });
+    setManualForm({ amount: "", category: "餐飲", date: new Date().toISOString().split("T")[0] });
   };
 
   const successCount = results.filter(r => r.receipt && !r.error).length;
@@ -483,20 +488,22 @@ export default function ReceiptRecorderCard({ onSaved, receiptCount }: Props) {
               />
               <label htmlFor="camera-input" style={{
                 ...s.uploadZone,
-                borderColor: loading ? "#e2e8f0" : "#2563eb",
-                background: loading ? "#f8fafc" : "#eff6ff",
+                borderColor: loading ? "#e2e8f0" : "#93c5fd",
+                background: loading ? "#f8fafc" : "linear-gradient(180deg, #eff6ff, #dbeafe)",
                 pointerEvents: loading ? "none" : "auto",
               }}>
                 {loading ? (
                   <>
-                    <div className="spinner" style={{ width: 40, height: 40, borderWidth: 4 }} />
-                    <div style={{ marginTop: 10, fontSize: 16, fontWeight: 700, color: "#2563eb" }}>正在辨識中...</div>
+                    <div className="spinner" style={{ width: 44, height: 44, borderWidth: 4 }} />
+                    <div style={{ marginTop: 12, fontSize: 16, fontWeight: 700, color: "#2563eb" }}>正在辨識中...請稍候</div>
                   </>
                 ) : (
                   <>
-                    <div style={{ fontSize: 48 }}>📸</div>
-                    <div style={{ fontSize: 16, fontWeight: 700, color: "#2563eb" }}>點擊拍照即辨識</div>
-                    <div style={{ fontSize: 12, color: "#94a3b8" }}>拍一張、辨一張，速度最快</div>
+                    <div style={s.cameraIconWrap}>📸</div>
+                    <div>
+                      <div style={{ fontSize: 18, fontWeight: 800, color: "#1e3a8a" }}>拍照記帳</div>
+                      <div style={{ fontSize: 13, color: "#3b82f6", marginTop: 6, fontWeight: 500, opacity: 0.9 }}>單張拍照 • 極速辨識</div>
+                    </div>
                   </>
                 )}
               </label>
@@ -511,15 +518,6 @@ export default function ReceiptRecorderCard({ onSaved, receiptCount }: Props) {
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                 <div>
-                  <label style={s.label}>幣別</label>
-                  <select style={s.input} value={manualForm.currency}
-                    onChange={(e) => setManualForm((p) => ({ ...p, currency: e.target.value as ManualFormState["currency"] }))}>
-                    <option value="TWD">TWD 台幣</option>
-                    <option value="JPY">JPY 日幣</option>
-                    <option value="USD">USD 美元</option>
-                  </select>
-                </div>
-                <div>
                   <label style={s.label}>分類</label>
                   <select style={s.input} value={manualForm.category}
                     onChange={(e) => setManualForm((p) => ({ ...p, category: e.target.value as any }))}>
@@ -528,12 +526,13 @@ export default function ReceiptRecorderCard({ onSaved, receiptCount }: Props) {
                     ))}
                   </select>
                 </div>
+                <div>
+                  <label style={s.label}>消費日期</label>
+                  <input type="date" style={s.input} value={manualForm.date}
+                    onChange={(e) => setManualForm((p) => ({ ...p, date: e.target.value }))} />
+                </div>
               </div>
-              <div>
-                <label style={s.label}>消費日期</label>
-                <input type="date" style={s.input} value={manualForm.date}
-                  onChange={(e) => setManualForm((p) => ({ ...p, date: e.target.value }))} />
-              </div>
+
               <button type="submit" style={{
                 ...s.btn, background: "linear-gradient(135deg, #059669, #10b981)", color: "#fff",
                 boxShadow: "0 4px 12px rgba(5,150,105,0.3)",

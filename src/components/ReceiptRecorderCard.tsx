@@ -141,13 +141,13 @@ const s: Record<string, React.CSSProperties> = {
 
 /* ── Props ── */
 interface Props {
-  onSaved?: () => void;
+  mutate: (data?: any, shouldRevalidate?: boolean) => Promise<any>;
   receiptCount?: number;
   existingNotes: string[];
 }
 
 /* ── Component ── */
-export default function ReceiptRecorderCard({ onSaved, receiptCount, existingNotes }: Props) {
+export default function ReceiptRecorderCard({ mutate, receiptCount, existingNotes }: Props) {
   const [inputMode, setInputMode] = useState<InputMode>("camera");
   const [destinationId, setDestinationId] = useState("jp");
   const [exchangeRate, setExchangeRate] = useState(0.22);
@@ -293,7 +293,7 @@ export default function ReceiptRecorderCard({ onSaved, receiptCount, existingNot
         note: receipt.note || null,
       });
       setResults(prev => prev.map((p, i) => i === index ? { ...p, saving: false, saved: true } : p));
-      onSaved?.();
+      mutate();
     } catch (err: any) {
       setResults(prev => prev.map((p, i) => i === index ? { ...p, saving: false, error: err.message } : p));
     }
@@ -323,7 +323,7 @@ export default function ReceiptRecorderCard({ onSaved, receiptCount, existingNot
       });
       
       setManualSaved(true);
-      onSaved?.();
+      mutate();
       setTimeout(() => {
         handleReset();
       }, 1500);

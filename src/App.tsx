@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState, useMemo } from "react";
+import { useState, useMemo } from "react";
+import useSWR from "swr";
 import { fetchReceipts, type Receipt } from "./lib/supabase";
 import ReceiptRecorderCard from "./components/ReceiptRecorderCard";
 import ReceiptList from "./components/ReceiptList";
@@ -43,22 +44,9 @@ const navStyle: Record<string, React.CSSProperties> = {
 
 export default function App() {
   const [tab, setTab] = useState<Tab>("record");
-  const [receipts, setReceipts] = useState<Receipt[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  const loadReceipts = useCallback(async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const data = await fetchReceipts();
-      setReceipts(data);
-    } catch (err: any) {
-      console.error("Failed to fetch receipts:", err);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  
+  const { data: receipts = [], mutate, isLoading: loading, error: fetchError } = useSWR<Receipt[]>('receipts', fetchReceipts);
+  const error = fetchError ? fetchError.message : "";
 
   const existingNotes = useMemo(() => {
     const notes = new Set<string>();
@@ -70,14 +58,6 @@ export default function App() {
     });
     return Array.from(notes);
   }, [receipts]);
-
-  useEffect(() => {
-    loadReceipts();
-  }, [loadReceipts]);
-
-  const handleSaved = () => {
-    loadReceipts();
-  };
 
   return (
     <>
@@ -100,7 +80,7 @@ export default function App() {
         >
           ⚠️ {error}
           <button
-            onClick={loadReceipts}
+            onClick={() => mutate()}
             style={{
               marginLeft: 10,
               border: "none",
@@ -119,10 +99,10 @@ export default function App() {
 
       {/* Tab Content */}
       <div style={{ display: tab === "record" ? "block" : "none" }}>
-        <ReceiptRecorderCard onSaved={handleSaved} receiptCount={receipts.length} existingNotes={existingNotes} />
+        <ReceiptRecorderCard mutate={mutate} receiptCount={receipts.length} existingNotes={existingNotes} />
       </div>
       <div style={{ display: tab === "list" ? "block" : "none" }}>
-        <ReceiptList receipts={receipts} loading={loading} onDelete={handleSaved} existingNotes={existingNotes} />
+        <ReceiptList receipts={receipts} loading={loading} mutate={mutate} existingNotes={existingNotes} />
       </div>
       <div style={{ display: tab === "settlement" ? "block" : "none" }}>
         <SettlementView receipts={receipts} loading={loading} />

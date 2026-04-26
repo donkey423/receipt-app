@@ -86,11 +86,11 @@ const s: Record<string, React.CSSProperties> = {
 interface Props {
   receipts: Receipt[];
   loading: boolean;
-  onDelete: () => void;
+  mutate: (data?: any, shouldRevalidate?: boolean) => Promise<any>;
   existingNotes: string[];
 }
 
-export default function ReceiptList({ receipts, loading, onDelete, existingNotes }: Props) {
+export default function ReceiptList({ receipts, loading, mutate, existingNotes }: Props) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [deletingAll, setDeletingAll] = useState(false);
@@ -109,6 +109,12 @@ export default function ReceiptList({ receipts, loading, onDelete, existingNotes
 
   const handleUpdate = async (id: string) => {
     setUpdating(true);
+    // Optimistic UI
+    const updatedReceipts = receipts.map(r => 
+      r.id === id ? { ...r, twd_amount: editAmount, note: editNote || null, items: editItems } : r
+    );
+    mutate(updatedReceipts, false);
+    
     try {
       const { updateReceipt } = await import("../lib/supabase");
       await updateReceipt(id, { 
@@ -117,9 +123,10 @@ export default function ReceiptList({ receipts, loading, onDelete, existingNotes
         items: editItems
       });
       setEditingId(null);
-      onDelete(); // 使用 onDelete 來觸發 App 重新載入列表
+      mutate();
     } catch (err: any) {
       alert(err.message || "更新失敗");
+      mutate(); // Revert on error
     } finally {
       setUpdating(false);
     }
@@ -128,12 +135,17 @@ export default function ReceiptList({ receipts, loading, onDelete, existingNotes
   const handleDelete = async (id: string) => {
     if (!confirm("確定要刪除這筆記錄嗎？")) return;
     setDeleting(id);
+    
+    // Optimistic UI
+    mutate(receipts.filter(r => r.id !== id), false);
+
     try {
       const { deleteReceipt } = await import("../lib/supabase");
       await deleteReceipt(id);
-      onDelete();
+      mutate();
     } catch (err: any) {
       alert(err.message || "刪除失敗");
+      mutate(); // Revert on error
     } finally {
       setDeleting(null);
     }
@@ -142,12 +154,17 @@ export default function ReceiptList({ receipts, loading, onDelete, existingNotes
   const handleDeleteAll = async () => {
     if (!confirm(`確定要刪除全部 ${receipts.length} 筆記錄嗎？\n\n此操作無法復原！`)) return;
     setDeletingAll(true);
+    
+    // Optimistic UI
+    mutate([], false);
+
     try {
       const { deleteAllReceipts } = await import("../lib/supabase");
       await deleteAllReceipts();
-      onDelete();
+      mutate();
     } catch (err: any) {
       alert(err.message || "全部刪除失敗");
+      mutate(); // Revert on error
     } finally {
       setDeletingAll(false);
     }

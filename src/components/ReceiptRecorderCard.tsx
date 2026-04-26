@@ -70,8 +70,8 @@ const DESTINATIONS = [
 ];
 
 /* ── Image Resize ── */
-// Further reduced to 720 for maximum speed/avoid timeouts
-function resizeImage(file: File, maxDim = 720): Promise<{ base64: string; mediaType: string; previewUrl: string }> {
+// Ultra-optimized for speed (640px is sweet spot for Gemini OCR)
+function resizeImage(file: File, maxDim = 640): Promise<{ base64: string; mediaType: string; previewUrl: string }> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -220,84 +220,64 @@ export default function ReceiptRecorderCard({ onSaved, receiptCount }: Props) {
   };
 
   /* ── Handlers ── */
+  const processSingleImage = async (img: ImageFile) => {
+    setLoading(true); setError("");
+    const dest = DESTINATIONS.find(d => d.id === destinationId);
+    let attempt = 0;
+    let success = false;
+    let lastErr = "辨識失敗";
+
+    while (attempt < 3 && !success) {
+      attempt++;
+      try {
+        const res = await fetch("/api/ocr", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ 
+            image: img.base64, 
+            mediaType: img.mediaType,
+            targetCurrency: dest?.currency
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || `辨識失敗 (${res.status})`);
+        
+        const newRes: OcrResult = {
+          image: img,
+          receipt: { ...data, icon: categoryIconMap[data.category] || "🧾" },
+          error: "", saving: false, saved: false,
+        };
+        setResults(prev => [newRes, ...prev]); // Add to top of list
+        success = true;
+      } catch (err: any) {
+        lastErr = err.message || "未知錯誤";
+        if (attempt < 3) await new Promise(r => setTimeout(r, attempt * 1000));
+      }
+    }
+
+    if (!success) {
+      setResults(prev => [{
+        image: img, receipt: null,
+        error: attempt > 1 ? `重試失敗: ${lastErr}` : lastErr, 
+        saving: false, saved: false,
+      }, ...prev]);
+    }
+    updateQuota(1);
+    setLoading(false);
+  };
+
   const handleImageChange = async (e: ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    if (files.length === 0) return;
-    setError(""); setResults([]);
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setError("");
 
     try {
-      const processed: ImageFile[] = [];
-      for (const file of files) {
-        const result = await resizeImage(file);
-        processed.push({ file, ...result });
-      }
-      setImages(processed);
+      const result = await resizeImage(file);
+      await processSingleImage({ file, ...result });
     } catch (err: any) {
       setError(err.message || "圖片處理失敗");
     }
-    // Reset file input so same files can be re-selected
     e.target.value = "";
-  };
-
-  const handleOCR = async () => {
-    if (images.length === 0) { setError("請先拍照或選取收據圖片"); return; }
-    setLoading(true); setError(""); setResults([]);
-    setProgress({ done: 0, total: images.length });
-
-    const newResults: OcrResult[] = [];
-
-    for (let i = 0; i < images.length; i++) {
-      const img = images[i];
-      const dest = DESTINATIONS.find(d => d.id === destinationId);
-      let attempt = 0;
-      let success = false;
-      let lastErr = "辨識失敗";
-
-      while (attempt < 3 && !success) {
-        attempt++;
-        try {
-          const res = await fetch("/api/ocr", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ 
-              image: img.base64, 
-              mediaType: img.mediaType,
-              targetCurrency: dest?.currency
-            }),
-          });
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.error || `辨識失敗 (${res.status})`);
-          newResults.push({
-            image: img,
-            receipt: { ...data, icon: categoryIconMap[data.category] || "🧾" },
-            error: "", saving: false, saved: false,
-          });
-          success = true;
-        } catch (err: any) {
-          lastErr = err.message || "未知錯誤";
-          if (attempt < 3) {
-            // Exponential backoff: 1500ms -> 3000ms
-            await new Promise(r => setTimeout(r, attempt * 1500));
-          }
-        }
-      }
-
-      if (!success) {
-        newResults.push({
-          image: img, receipt: null,
-          error: attempt > 1 ? `重試 ${attempt} 次失敗: ${lastErr}` : lastErr, 
-          saving: false, saved: false,
-        });
-      }
-
-      setProgress({ done: i + 1, total: images.length });
-      updateQuota(1);
-    }
-
-    setResults(newResults);
-    // 清空 Base64 記憶體佔用，防止手機 Safari OOM (Out Of Memory)
-    setImages([]);
-    setLoading(false);
   };
 
   const handleSaveOne = async (index: number) => {
@@ -496,46 +476,30 @@ export default function ReceiptRecorderCard({ onSaved, receiptCount }: Props) {
         {/* Input Panel */}
         <div style={s.card}>
           {inputMode === "camera" ? (
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              <label style={s.uploadZone}>
-                <input type="file" accept="image/*" capture="environment" multiple
-                  onChange={handleImageChange} style={{ display: "none" }} />
-                {images.length > 0 ? (
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, width: "100%" }}>
-                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "center" }}>
-                      {images.map((img, i) => (
-                        <img key={i} src={img.previewUrl} alt={`收據 ${i + 1}`}
-                          style={{ width: 72, height: 72, objectFit: "cover", borderRadius: 12, border: "2px solid #2563eb33" }} />
-                      ))}
-                    </div>
-                    <span style={{ fontSize: 13, color: "#2563eb", fontWeight: 600 }}>
-                      已選 {images.length} 張 · 點擊重新選擇
-                    </span>
-                  </div>
+            <div style={{ padding: "10px 0" }}>
+              <input
+                type="file" accept="image/*" capture="environment"
+                id="camera-input" hidden onChange={handleImageChange}
+              />
+              <label htmlFor="camera-input" style={{
+                ...s.uploadZone,
+                borderColor: loading ? "#e2e8f0" : "#2563eb",
+                background: loading ? "#f8fafc" : "#eff6ff",
+                pointerEvents: loading ? "none" : "auto",
+              }}>
+                {loading ? (
+                  <>
+                    <div className="spinner" style={{ width: 40, height: 40, borderWidth: 4 }} />
+                    <div style={{ marginTop: 10, fontSize: 16, fontWeight: 700, color: "#2563eb" }}>正在辨識中...</div>
+                  </>
                 ) : (
                   <>
-                    <span style={{ fontSize: 48 }}>📷</span>
-                    <span style={{ fontWeight: 700, fontSize: 15, color: "#1e293b" }}>點擊拍照或上傳收據</span>
-                    <span style={{ fontSize: 13, color: "#94a3b8" }}>可一次選多張，每張各辨識一筆</span>
+                    <div style={{ fontSize: 48 }}>📸</div>
+                    <div style={{ fontSize: 16, fontWeight: 700, color: "#2563eb" }}>點擊拍照即辨識</div>
+                    <div style={{ fontSize: 12, color: "#94a3b8" }}>拍一張、辨一張，速度最快</div>
                   </>
                 )}
               </label>
-              <button
-                style={{
-                  ...s.btn,
-                  background: loading ? "#94a3b8" : images.length > 0 ? "linear-gradient(135deg, #f59e0b, #f97316)" : "#cbd5e1",
-                  color: "#fff",
-                  boxShadow: images.length > 0 && !loading ? "0 4px 12px rgba(245,158,11,0.3)" : "none",
-                  pointerEvents: loading || images.length === 0 ? "none" : "auto",
-                }}
-                onClick={handleOCR} disabled={loading || images.length === 0}
-              >
-                {loading ? (
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-                    <span className="spinner" /> 辨識中 {progress.done}/{progress.total}...
-                  </span>
-                ) : images.length > 1 ? `🤖 辨識全部 ${images.length} 張` : "🤖 開始 AI 辨識"}
-              </button>
             </div>
           ) : (
             <form style={{ display: "flex", flexDirection: "column", gap: 14 }} onSubmit={handleManualSubmit}>

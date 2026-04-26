@@ -454,7 +454,6 @@ export default function ReceiptRecorderCard({ onSaved, receiptCount }: Props) {
           </div>
 
           <div style={s.headerSub}>
-            拍照即辨識 · 支援多張同時處理
             <div style={{ marginTop: 8, display: "flex", justifyContent: "center", gap: 12 }}>
               {(receiptCount ?? 0) > 0 && <span>🗂️ 已記錄 {receiptCount} 筆</span>}
               <span style={{ color: 1500 - quota < 50 ? "#ef4444" : "#10b981", fontWeight: 700 }}>
@@ -516,21 +515,19 @@ export default function ReceiptRecorderCard({ onSaved, receiptCount }: Props) {
                   style={s.input} value={manualForm.amount}
                   onChange={(e) => setManualForm((p) => ({ ...p, amount: e.target.value }))} />
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                <div>
-                  <label style={s.label}>分類</label>
-                  <select style={s.input} value={manualForm.category}
-                    onChange={(e) => setManualForm((p) => ({ ...p, category: e.target.value as any }))}>
-                    {Object.entries(categoryIconMap).map(([c, icon]) => (
-                      <option key={c} value={c}>{icon} {c}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label style={s.label}>消費日期</label>
-                  <input type="date" style={s.input} value={manualForm.date}
-                    onChange={(e) => setManualForm((p) => ({ ...p, date: e.target.value }))} />
-                </div>
+              <div>
+                <label style={s.label}>分類</label>
+                <select style={s.input} value={manualForm.category}
+                  onChange={(e) => setManualForm((p) => ({ ...p, category: e.target.value as any }))}>
+                  {Object.entries(categoryIconMap).map(([c, icon]) => (
+                    <option key={c} value={c}>{icon} {c}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label style={s.label}>消費日期</label>
+                <input type="date" style={s.input} value={manualForm.date}
+                  onChange={(e) => setManualForm((p) => ({ ...p, date: e.target.value }))} />
               </div>
 
               <button type="submit" style={{

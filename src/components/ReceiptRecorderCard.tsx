@@ -150,11 +150,10 @@ interface Props {
   onSaved?: () => void;
   receiptCount?: number;
   existingNotes: string[];
-  currentTrip: string;
 }
 
 /* ── Component ── */
-export default function ReceiptRecorderCard({ onSaved, receiptCount, existingNotes, currentTrip }: Props) {
+export default function ReceiptRecorderCard({ onSaved, receiptCount, existingNotes }: Props) {
   const [inputMode, setInputMode] = useState<InputMode>("camera");
   const [destinationId, setDestinationId] = useState("jp");
   const [exchangeRate, setExchangeRate] = useState(0.22);
@@ -304,7 +303,6 @@ export default function ReceiptRecorderCard({ onSaved, receiptCount, existingNot
         items: receipt.items,
         created_at: receipt.date ? new Date(receipt.date).toISOString() : undefined,
         note: receipt.note || null,
-        trip_name: currentTrip,
       });
       setResults(prev => prev.map((p, i) => i === index ? { ...p, saving: false, saved: true } : p));
       onSaved?.();
@@ -342,7 +340,6 @@ export default function ReceiptRecorderCard({ onSaved, receiptCount, existingNot
         items: [{ name: "手動記帳", price: amount, quantity: 1 }],
         created_at: new Date(manualForm.date).toISOString(),
         note: manualForm.note || null,
-        trip_name: currentTrip,
       });
       
       setManualSaved(true);

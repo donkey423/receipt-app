@@ -107,26 +107,3 @@ export async function updateReceipt(id: string, data: Partial<ReceiptInsert>): P
     throw new Error(err.message || `更新失敗 (${res.status})`);
   }
 }
-export async function archiveTrip(tripName: string): Promise<void> {
-  const res = await fetch(`${SUPABASE_URL}/receipts?trip_name=eq.${tripName}`, {
-    method: "PATCH",
-    headers,
-    body: JSON.stringify({ is_archived: true }),
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.message || `歸檔失敗 (${res.status})`);
-  }
-}
-
-export async function renameTrip(oldName: string, newName: string): Promise<void> {
-  const res = await fetch(`${SUPABASE_URL}/receipts?trip_name=eq.${oldName}`, {
-    method: "PATCH",
-    headers,
-    body: JSON.stringify({ trip_name: newName }),
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.message || `更名失敗 (${res.status})`);
-  }
-}

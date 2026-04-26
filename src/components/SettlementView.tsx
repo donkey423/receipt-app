@@ -38,15 +38,11 @@ const s: Record<string, React.CSSProperties> = {
 
 interface Props {
   receipts: Receipt[];
-  fullReceipts: Receipt[];
   loading: boolean;
-  tripName: string;
-  onRefresh: () => void;
 }
 
-export default function SettlementView({ receipts, loading, tripName, onRefresh }: Props) {
+export default function SettlementView({ receipts, loading }: Props) {
   const [selectedPerson, setSelectedPerson] = useState<string>("我 (我自己)");
-  const [archiving, setArchiving] = useState(false);
 
   const allItems = useMemo(() => {
     const list: any[] = [];
@@ -95,21 +91,6 @@ export default function SettlementView({ receipts, loading, tripName, onRefresh 
     });
     return Array.from(map.entries()).sort((a, b) => b[1] - a[1]);
   }, [allItems]);
-
-  const handleArchive = async () => {
-    if (!confirm(`確定要結算並歸檔 「${tripName}」 嗎？\n歸檔後資料將從目前清單隱藏，但仍保存在資料庫中。`)) return;
-    setArchiving(true);
-    try {
-      const { archiveTrip } = await import("../lib/supabase");
-      await archiveTrip(tripName);
-      alert("歸檔成功！");
-      onRefresh();
-    } catch (err: any) {
-      alert(err.message || "歸檔失敗");
-    } finally {
-      setArchiving(false);
-    }
-  };
 
   if (loading) {
     return <div style={{ display: "flex", justifyContent: "center", padding: 50 }}><div className="spinner" /></div>;
@@ -186,22 +167,6 @@ export default function SettlementView({ receipts, loading, tripName, onRefresh 
         </div>
       </div>
 
-      <div style={{ padding: "0 8px 30px" }}>
-        <button
-          onClick={handleArchive}
-          disabled={archiving || receipts.length === 0}
-          style={{
-            width: "100%", padding: "14px", borderRadius: 16, border: "none",
-            background: "#f1f5f9", color: "#64748b", fontSize: 14, fontWeight: 700,
-            cursor: "pointer", transition: "all 0.2s"
-          }}
-        >
-          {archiving ? "歸檔中..." : `🏁 結算並歸檔 「${tripName}」`}
-        </button>
-        <div style={{ textAlign: "center", color: "#94a3b8", fontSize: 11, marginTop: 12 }}>
-          提示：歸檔後資料不會刪除，可隨時在「行程」切換查看 🚀
-        </div>
-      </div>
     </div>
   );
 }

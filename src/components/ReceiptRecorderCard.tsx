@@ -200,11 +200,14 @@ export default function ReceiptRecorderCard({ onSaved, receiptCount }: Props) {
       const data = await res.json();
       if (data.result === "success" && data.rates[dest.currency]) {
         // 1 TWD = N Foreign -> 1 Foreign = 1/N TWD
-        const rate = 1 / data.rates[dest.currency];
-        setExchangeRate(parseFloat(rate.toFixed(4)));
+        const rate = parseFloat((1 / data.rates[dest.currency]).toFixed(4));
+        setExchangeRate(rate);
+        localStorage.setItem(`rate_${dest.currency}`, rate.toString());
       }
     } catch (e) {
       console.error("無法取得即時匯率:", e);
+      const cached = localStorage.getItem(`rate_${dest.currency}`);
+      if (cached) setExchangeRate(parseFloat(cached));
     }
     setIsRateLoading(false);
   };
@@ -238,35 +241,55 @@ export default function ReceiptRecorderCard({ onSaved, receiptCount }: Props) {
 
     for (let i = 0; i < images.length; i++) {
       const img = images[i];
-      try {
-        const dest = DESTINATIONS.find(d => d.id === destinationId);
-        const res = await fetch("/api/ocr", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ 
-            image: img.base64, 
-            mediaType: img.mediaType,
-            targetCurrency: dest?.currency
-          }),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || `辨識失敗 (${res.status})`);
-        newResults.push({
-          image: img,
-          receipt: { ...data, icon: categoryIconMap[data.category] || "🧾" },
-          error: "", saving: false, saved: false,
-        });
-      } catch (err: any) {
+      const dest = DESTINATIONS.find(d => d.id === destinationId);
+      let attempt = 0;
+      let success = false;
+      let lastErr = "辨識失敗";
+
+      while (attempt < 3 && !success) {
+        attempt++;
+        try {
+          const res = await fetch("/api/ocr", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ 
+              image: img.base64, 
+              mediaType: img.mediaType,
+              targetCurrency: dest?.currency
+            }),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || `辨識失敗 (${res.status})`);
+          newResults.push({
+            image: img,
+            receipt: { ...data, icon: categoryIconMap[data.category] || "🧾" },
+            error: "", saving: false, saved: false,
+          });
+          success = true;
+        } catch (err: any) {
+          lastErr = err.message || "未知錯誤";
+          if (attempt < 3) {
+            // Exponential backoff: 1500ms -> 3000ms
+            await new Promise(r => setTimeout(r, attempt * 1500));
+          }
+        }
+      }
+
+      if (!success) {
         newResults.push({
           image: img, receipt: null,
-          error: err.message || "辨識失敗", saving: false, saved: false,
+          error: attempt > 1 ? `重試 ${attempt} 次失敗: ${lastErr}` : lastErr, 
+          saving: false, saved: false,
         });
       }
+
       setProgress({ done: i + 1, total: images.length });
       updateQuota(1);
     }
 
     setResults(newResults);
+    // 清空 Base64 記憶體佔用，防止手機 Safari OOM (Out Of Memory)
+    setImages([]);
     setLoading(false);
   };
 

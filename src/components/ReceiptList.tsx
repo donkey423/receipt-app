@@ -100,19 +100,25 @@ export default function ReceiptList({ receipts, loading, onDelete, existingNotes
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editAmount, setEditAmount] = useState<number>(0);
   const [editNote, setEditNote] = useState<string>("");
+  const [editItems, setEditItems] = useState<any[]>([]);
   const [updating, setUpdating] = useState(false);
 
   const startEdit = (r: Receipt) => {
     setEditingId(r.id);
     setEditAmount(r.twd_amount);
     setEditNote(r.note || "");
+    setEditItems([...(r.items || [])]);
   };
 
   const handleUpdate = async (id: string) => {
     setUpdating(true);
     try {
       const { updateReceipt } = await import("../lib/supabase");
-      await updateReceipt(id, { twd_amount: editAmount, note: editNote || null });
+      await updateReceipt(id, { 
+        twd_amount: editAmount, 
+        note: editNote || null,
+        items: editItems
+      });
       setEditingId(null);
       onDelete(); // 使用 onDelete 來觸發 App 重新載入列表
     } catch (err: any) {
@@ -307,6 +313,29 @@ export default function ReceiptList({ receipts, loading, onDelete, existingNotes
                                 placeholder="如：姐姐"
                               />
                             </div>
+
+                            <div style={{ marginTop: 8 }}>
+                              <div style={{ fontSize: 11, fontWeight: 700, color: "#475569", marginBottom: 6 }}>各品項備註：</div>
+                              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                                {editItems.map((item, idx) => (
+                                  <div key={idx} style={{ background: "#f8fafc", padding: 8, borderRadius: 10, border: "1px solid #e2e8f0" }}>
+                                    <div style={{ fontSize: 12, fontWeight: 600, color: "#1e293b", marginBottom: 4 }}>{item.name}</div>
+                                    <input 
+                                      type="text"
+                                      list="existing-notes"
+                                      placeholder="品項備註 (如：姐姐)"
+                                      style={{ ...s.input, padding: "6px 10px", fontSize: 12, borderRadius: 8 }}
+                                      value={item.note || ""}
+                                      onChange={(e) => {
+                                        const next = [...editItems];
+                                        next[idx] = { ...item, note: e.target.value };
+                                        setEditItems(next);
+                                      }}
+                                    />
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
                             <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
                               <button
                                 onClick={() => setEditingId(null)}
@@ -345,7 +374,12 @@ export default function ReceiptList({ receipts, loading, onDelete, existingNotes
                               borderBottom: i < (r.items?.length || 0) - 1 ? "1px solid #e2e8f0" : "none",
                             }}
                           >
-                            <span style={{ fontSize: 13 }}>{item.name}</span>
+                            <div style={{ display: "flex", flexDirection: "column" }}>
+                              <span style={{ fontSize: 13, fontWeight: 600 }}>{item.name}</span>
+                              {item.note && (
+                                <span style={{ fontSize: 11, color: "#2563eb", fontWeight: 700 }}>👤 {item.note}</span>
+                              )}
+                            </div>
                             <span style={{ fontSize: 13, color: "#64748b" }}>
                               {currencySymbols[r.currency] || ""}{item.price?.toLocaleString()} × {item.quantity}
                             </span>

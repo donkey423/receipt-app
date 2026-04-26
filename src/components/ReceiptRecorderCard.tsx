@@ -12,6 +12,7 @@ interface ReceiptData {
   currency: string;
   total_amount: number;
   category: string;
+  date?: string;
   icon: string;
   items: ReceiptItem[];
 }
@@ -35,8 +36,9 @@ type InputMode = "camera" | "manual";
 
 interface ManualFormState {
   amount: string;
-  currency: "TWD" | "JPY" | "USD";
-  category: "餐飲" | "交通" | "日用品" | "娛樂" | "醫療" | "學習" | "其他";
+  currency: string;
+  category: string;
+  date: string;
 }
 
 /* ── Constants ── */
@@ -154,7 +156,12 @@ export default function ReceiptRecorderCard({ onSaved, receiptCount }: Props) {
   const [destinationId, setDestinationId] = useState("jp");
   const [exchangeRate, setExchangeRate] = useState(0.22);
   const [isRateLoading, setIsRateLoading] = useState(false);
-  const [manualForm, setManualForm] = useState<ManualFormState>({ amount: "", currency: "JPY", category: "餐飲" });
+  const [manualForm, setManualForm] = useState<ManualFormState>({ 
+    amount: "", 
+    currency: "JPY", 
+    category: "餐飲",
+    date: new Date().toISOString().split("T")[0] 
+  });
 
   // Multi-image states
   const [images, setImages] = useState<ImageFile[]>([]);
@@ -312,6 +319,7 @@ export default function ReceiptRecorderCard({ onSaved, receiptCount }: Props) {
         category: receipt.category,
         icon: receipt.icon,
         items: receipt.items,
+        created_at: receipt.date ? new Date(receipt.date).toISOString() : undefined,
       });
       setResults(prev => prev.map((p, i) => i === index ? { ...p, saving: false, saved: true } : p));
       onSaved?.();
@@ -373,6 +381,7 @@ export default function ReceiptRecorderCard({ onSaved, receiptCount }: Props) {
         exchange_rate: manualReceipt.currency !== "TWD" ? exchangeRate : null,
         category: manualReceipt.category, icon: manualReceipt.icon,
         items: manualReceipt.items,
+        created_at: new Date(manualForm.date).toISOString(),
       });
       setManualSaved(true);
       onSaved?.();
@@ -386,7 +395,7 @@ export default function ReceiptRecorderCard({ onSaved, receiptCount }: Props) {
   const handleReset = () => {
     setImages([]); setResults([]); setError("");
     setManualReceipt(null); setManualSaved(false);
-    setManualForm({ amount: "", currency: "TWD", category: "餐飲" });
+    setManualForm({ amount: "", currency: "TWD", category: "餐飲", date: new Date().toISOString().split("T")[0] });
   };
 
   const successCount = results.filter(r => r.receipt && !r.error).length;
@@ -549,12 +558,17 @@ export default function ReceiptRecorderCard({ onSaved, receiptCount }: Props) {
                 <div>
                   <label style={s.label}>分類</label>
                   <select style={s.input} value={manualForm.category}
-                    onChange={(e) => setManualForm((p) => ({ ...p, category: e.target.value as ManualFormState["category"] }))}>
+                    onChange={(e) => setManualForm((p) => ({ ...p, category: e.target.value as any }))}>
                     {Object.entries(categoryIconMap).map(([c, icon]) => (
                       <option key={c} value={c}>{icon} {c}</option>
                     ))}
                   </select>
                 </div>
+              </div>
+              <div>
+                <label style={s.label}>消費日期</label>
+                <input type="date" style={s.input} value={manualForm.date}
+                  onChange={(e) => setManualForm((p) => ({ ...p, date: e.target.value }))} />
               </div>
               <button type="submit" style={{
                 ...s.btn, background: "linear-gradient(135deg, #059669, #10b981)", color: "#fff",
@@ -630,6 +644,12 @@ export default function ReceiptRecorderCard({ onSaved, receiptCount }: Props) {
                               />
                             </div>
                           )}
+                          <input
+                            type="date"
+                            style={{ ...s.input, padding: "4px 8px", fontSize: 12, width: "auto", border: "1px solid #cbd5e1" }}
+                            value={r.receipt.date || new Date().toISOString().split("T")[0]}
+                            onChange={(e) => handleResultEdit(i, { date: e.target.value })}
+                          />
                         </div>
 
                         {r.receipt.currency !== "TWD" && (

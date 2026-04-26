@@ -37,6 +37,7 @@ export interface ReceiptInsert {
   category: string;
   icon: string;
   items: ReceiptItem[];
+  created_at?: string;
 }
 
 /* ── API Functions ── */

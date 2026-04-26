@@ -125,26 +125,66 @@ export default function ReceiptList({ receipts, loading, onDelete }: Props) {
     }
   };
 
+  const handleExportCSV = () => {
+    if (receipts.length === 0) return;
+    
+    let csv = "日期,時間,分類,幣別,外幣總額,台幣總額,匯率,商品明細\n";
+    
+    receipts.forEach(r => {
+      const d = new Date(r.created_at);
+      const date = `${d.getFullYear()}/${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getDate().toString().padStart(2,'0')}`;
+      const time = `${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
+      
+      const itemsStr = (r.items || []).map(item => `${item.name} (${item.quantity})`).join(" + ");
+      const safeItems = `"${itemsStr.replace(/"/g, '""')}"`;
+      
+      csv += `${date},${time},${r.category},${r.currency},${r.total_amount || 0},${r.twd_amount || r.total_amount || 0},${r.exchange_rate || 1},${safeItems}\n`;
+    });
+
+    const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.href = url;
+    const today = new Date();
+    const dateStr = `${today.getFullYear()}${(today.getMonth()+1).toString().padStart(2,'0')}${today.getDate().toString().padStart(2,'0')}`;
+    link.download = `記帳清單_${dateStr}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   const groups = groupByDate(receipts);
 
   return (
     <div style={s.page}>
       <div style={s.wrap}>
         <div style={s.title}>📋 消費清單</div>
-        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 12, marginBottom: 4 }}>
-          <span style={{ fontSize: 12, color: "#94a3b8" }}>共 {receipts.length} 筆記錄</span>
+        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 8, marginBottom: 4 }}>
+          <span style={{ fontSize: 12, color: "#94a3b8" }}>共 {receipts.length} 筆</span>
+          <div style={{ flex: 1 }} />
           {receipts.length > 0 && (
-            <button
-              onClick={handleDeleteAll}
-              disabled={deletingAll}
-              style={{
-                border: "none", background: "#fee2e2", color: "#dc2626",
-                borderRadius: 8, padding: "4px 12px", fontSize: 12,
-                fontWeight: 600, cursor: "pointer", opacity: deletingAll ? 0.5 : 1,
-              }}
-            >
-              {deletingAll ? "刪除中..." : "🗑️ 全部刪除"}
-            </button>
+            <>
+              <button
+                onClick={handleExportCSV}
+                style={{
+                  border: "none", background: "#dcfce7", color: "#16a34a",
+                  borderRadius: 8, padding: "5px 12px", fontSize: 12,
+                  fontWeight: 600, cursor: "pointer",
+                }}
+              >
+                📊 下載 Excel
+              </button>
+              <button
+                onClick={handleDeleteAll}
+                disabled={deletingAll}
+                style={{
+                  border: "none", background: "#fee2e2", color: "#dc2626",
+                  borderRadius: 8, padding: "5px 12px", fontSize: 12,
+                  fontWeight: 600, cursor: "pointer", opacity: deletingAll ? 0.5 : 1,
+                }}
+              >
+                {deletingAll ? "..." : "🗑️ 清空"}
+              </button>
+            </>
           )}
         </div>
 

@@ -414,7 +414,7 @@ export default function ReceiptRecorderCard({ onSaved, receiptCount }: Props) {
 
           <div style={{ marginTop: 14, fontSize: 13, color: "#2563eb", fontWeight: 700 }}>
             {isRateLoading ? (
-              <span className="spinner" style={{ width: 14, height: 14, borderWeight: 2 }} />
+              <span className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} />
             ) : (
               <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
                 <span>💰 1 {DESTINATIONS.find(d => d.id === destinationId)?.currency} =</span>

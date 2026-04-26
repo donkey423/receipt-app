@@ -547,15 +547,15 @@ export default function ReceiptRecorderCard({ onSaved, receiptCount, existingNot
                   ))}
                 </select>
               </div>
-              <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
-                <div style={{ flex: 1, minWidth: 140 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                <div>
                   <label style={s.label}>消費日期</label>
                   <input type="date" style={s.input} value={manualForm.date}
                     onChange={(e) => setManualForm((p) => ({ ...p, date: e.target.value }))} />
                 </div>
-                <div style={{ flex: 1, minWidth: 140 }}>
+                <div>
                   <label style={s.label}>📝 總備註 (選填)</label>
-                  <input type="text" list="existing-notes" placeholder="人名"
+                  <input type="text" list="existing-notes" placeholder="人名 (如：姐姐)"
                     style={s.input} value={manualForm.note}
                     onChange={(e) => setManualForm((p) => ({ ...p, note: e.target.value }))} />
                 </div>

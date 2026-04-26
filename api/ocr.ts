@@ -10,7 +10,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    return res.status(500).json({ error: "GEMINI_API_KEY 未設定" });
+    return res.status(500).json({ error: "GEMINI_API_KEY 未設定，請在環境變數中切換至新金鑰" });
   }
 
   const { image, mediaType, targetCurrency } = req.body;

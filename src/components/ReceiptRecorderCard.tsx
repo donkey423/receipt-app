@@ -146,6 +146,24 @@ export default function ReceiptRecorderCard({ onSaved, receiptCount }: Props) {
   const [manualSaved, setManualSaved] = useState(false);
   const [error, setError] = useState("");
 
+  // Quota states (1500 per day for Gemini Flash Free)
+  const [quota, setQuota] = useState(() => {
+    const today = new Date().toDateString();
+    const saved = localStorage.getItem("gemini_quota");
+    if (saved) {
+      const { date, count } = JSON.parse(saved);
+      if (date === today) return count;
+    }
+    return 0;
+  });
+
+  const updateQuota = (count: number) => {
+    const today = new Date().toDateString();
+    const newCount = quota + count;
+    setQuota(newCount);
+    localStorage.setItem("gemini_quota", JSON.stringify({ date: today, count: newCount }));
+  };
+
   /* ── Handlers ── */
   const handleImageChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -195,6 +213,7 @@ export default function ReceiptRecorderCard({ onSaved, receiptCount }: Props) {
         });
       }
       setProgress({ done: i + 1, total: images.length });
+      updateQuota(1);
     }
 
     setResults(newResults);
@@ -291,7 +310,12 @@ export default function ReceiptRecorderCard({ onSaved, receiptCount }: Props) {
           <div style={s.headerTitle}>📱 收據記錄</div>
           <div style={s.headerSub}>
             拍照即辨識 · 支援多張同時處理
-            {(receiptCount ?? 0) > 0 && <span> · 已記錄 {receiptCount} 筆</span>}
+            <div style={{ marginTop: 8, display: "flex", justifyContent: "center", gap: 12 }}>
+              {(receiptCount ?? 0) > 0 && <span>🗂️ 已記錄 {receiptCount} 筆</span>}
+              <span style={{ color: 1500 - quota < 50 ? "#ef4444" : "#10b981", fontWeight: 700 }}>
+                🔋 今日剩餘 {Math.max(0, 1500 - quota)} 次
+              </span>
+            </div>
           </div>
         </div>
 

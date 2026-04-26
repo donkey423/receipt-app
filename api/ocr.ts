@@ -18,28 +18,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: "未提供圖片" });
   }
 
-  const prompt = `你是一個專業的收據辨識助手。請仔細分析這張收據圖片，提取以下資訊並以 JSON 格式回傳。
+  const prompt = `你是一個專業的收據辨識助手。請仔細分析這張收據圖片，提取詳細資訊。
+特別注意：除大類別外，請務必精確列出每一項購買的商品名稱（例如：不只是「餐飲」，而是「全麥麵包」、「珍珠奶茶」）。
 
-回傳格式（只回傳 JSON，不要加任何其他文字或 markdown 標記）：
+回傳格式（只回傳 JSON，不要加標記）：
 {
-  "currency": "幣別代碼（TWD、JPY、USD、EUR 等）",
+  "currency": "幣別代碼（TWD, JPY, USD 等）",
   "total_amount": 總金額數字,
-  "category": "分類",
+  "category": "分類（餐飲、交通、日用品、娛樂、醫療、學習、其他）",
   "items": [
-    { "name": "品項名稱", "price": 單價, "quantity": 數量 }
+    { "name": "商品具體名稱（麵包、飲料等）", "price": 單價, "quantity": 數量 }
   ]
 }
 
-分類必須是以下之一：餐飲、交通、日用品、娛樂、醫療、學習、其他
-
 規則：
-1. 只回傳純 JSON，不要加 \`\`\`json 或任何 markdown 標記
-2. 金額必須是純數字，不要有逗號或貨幣符號
-3. 如果品項名稱是外文，請翻譯成中文
-4. 如果看不清某些品項，盡量推測
-5. 如果圖片中有折扣、税金等，也列為 items
-6. total_amount 應該是收據上的最終合計金額
-7. 如果無法辨識為收據，回傳 {"error": "無法辨識此圖片為收據"}`;
+1. 商品名稱請務必從英文/日文翻譯成中文，並盡量具體。
+2. 金額必須是數字。
+3. total_amount 必須等於收據最終付款金額。
+4. 如果無法辨識或不是收據，回傳 {"error": "無法辨識"}。`;
 
   try {
     const response = await fetch(

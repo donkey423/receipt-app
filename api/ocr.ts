@@ -18,25 +18,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: "未提供圖片" });
   }
 
-  const prompt = `你是一個專業收據辨識助手。請精準分析圖片並提取資訊。
-${targetCurrency ? `提示：這張收據預期幣別為 ${targetCurrency}。` : ""}
-重要指令：
-1. 提取資訊：必須包含所有商品的名稱、單價、數量。
-2. 折扣處理：若收據上有折扣、折價券或回饋金，請將其記錄為一項，且【單價 (price) 必須為負數】（例如：-380）。
-3. 總金額準確性：total_amount 必須等於所有 items (單價 x 數量) 的總和。
-4. 日期格式：固定為 YYYY-MM-DD。
+  const prompt = `收據辨識：
+${targetCurrency ? `幣別：${targetCurrency}` : ""}
+1. 提取商品、單價、數量。
+2. 折扣記錄為單項且價格為負。
+3. total_amount 需與 items 加總一致。
+4. 日期：YYYY-MM-DD。
 
-回傳格式 (純 JSON)：
+格式 (JSON)：
 {
-  "currency": "幣別代碼 (例如 TWD, JPY)",
+  "currency": "代碼",
   "total_amount": 數字,
-  "category": "分類",
+  "category": "分類名",
   "date": "YYYY-MM-DD",
-  "items": [ 
-    { "name": "名稱", "price": 價格(折扣請用負值), "quantity": 數量 } 
-  ]
+  "items": [ { "name": "名稱", "price": 價格, "quantity": 數量 } ]
 }
-分類選項：餐飲、交通、日用品、娛樂、醫療、學習、其他`;
+分類：餐飲、交通、日用品、娛樂、醫療、學習、其他`;
 
   try {
     const response = await fetch(

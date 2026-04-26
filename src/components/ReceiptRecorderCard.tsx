@@ -65,8 +65,8 @@ const DESTINATIONS = [
 ];
 
 /* ── Image Resize ── */
-// Ultra-optimized for speed (640px is sweet spot for Gemini OCR)
-function resizeImage(file: File, maxDim = 640): Promise<{ base64: string; mediaType: string; previewUrl: string }> {
+// Optimized for speed & accuracy (800px is excellent for Gemini 1.5 Flash OCR)
+function resizeImage(file: File, maxDim = 800): Promise<{ base64: string; mediaType: string; previewUrl: string }> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = (e) => {

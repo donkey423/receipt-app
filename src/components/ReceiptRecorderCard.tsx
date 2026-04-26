@@ -501,8 +501,8 @@ export default function ReceiptRecorderCard({ onSaved, receiptCount }: Props) {
                   <>
                     <div style={s.cameraIconWrap}>📸</div>
                     <div>
-                      <div style={{ fontSize: 18, fontWeight: 800, color: "#1e3a8a" }}>拍照記帳</div>
-                      <div style={{ fontSize: 13, color: "#3b82f6", marginTop: 6, fontWeight: 500, opacity: 0.9 }}>單張拍照 • 極速辨識</div>
+                      <div style={{ fontSize: 20, fontWeight: 800, color: "#1e3a8a" }}>開始拍照</div>
+                      <div style={{ fontSize: 13, color: "#3b82f6", marginTop: 6, fontWeight: 500, opacity: 0.9 }}>AI 極速解析收據</div>
                     </div>
                   </>
                 )}

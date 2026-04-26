@@ -76,8 +76,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
 
-    // Try to parse JSON from the response
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    // 更加強健的 JSON 提取邏輯
+    let cleanedText = text.trim();
+    // 如果有 markdown 代碼塊，先拔掉它
+    if (cleanedText.includes("```")) {
+      cleanedText = cleanedText.replace(/```(?:json)?([\s\S]*?)```/g, "$1").trim();
+    }
+    
+    const jsonMatch = cleanedText.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
       try {
         const receipt = JSON.parse(jsonMatch[0]);
@@ -86,8 +92,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
         return res.status(200).json(receipt);
       } catch (parseErr) {
-        console.error("JSON parse error:", text);
-        return res.status(500).json({ error: "辨識結果解析失敗，請重試" });
+        console.error("JSON 解析失敗，原始文字:", text);
+        return res.status(500).json({ error: "辨識格式不正確，請再試一次" });
       }
     }
 

@@ -597,12 +597,6 @@ export default function ReceiptRecorderCard({ onSaved, receiptCount, existingNot
                 辨識結果：{successCount}/{results.length} 成功
                 {savedCount > 0 && ` · ${savedCount} 已儲存`}
               </span>
-              {successCount > savedCount && (
-                <button onClick={handleSaveAll} style={{
-                  border: "none", background: "linear-gradient(135deg, #2563eb, #3b82f6)", color: "#fff",
-                  borderRadius: 10, padding: "6px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer",
-                }}>💾 全部儲存</button>
-              )}
             </div>
 
             {results.map((r, i) => (

@@ -96,10 +96,34 @@ export default function App() {
     return receipts.filter(r => (r.trip_name || "本次行程") === currentTrip);
   }, [receipts, currentTrip]);
 
-  const handleCreateTrip = () => {
-    const name = prompt("請輸入新行程名稱（例如：2024 日本行）：");
-    if (name && name.trim()) {
-      saveCurrentTrip(name.trim());
+  const handleRenameTrip = async () => {
+    const newName = prompt(`將行程 「${currentTrip}」 更名為：`, currentTrip);
+    if (newName && newName.trim() && newName.trim() !== currentTrip) {
+      try {
+        const { renameTrip } = await import("./lib/supabase");
+        await renameTrip(currentTrip, newName.trim());
+        saveCurrentTrip(newName.trim());
+        loadReceipts();
+      } catch (err: any) {
+        alert(err.message || "更名失敗");
+      }
+    }
+  };
+
+  const handleArchiveTrip = async () => {
+    if (!confirm(`⚠️ 確定要歸檔結算 「${currentTrip}」 嗎？\n一旦確定將無法更改任何資料且會自動開啟新行程。`)) return;
+    
+    try {
+      const { archiveTrip } = await import("./lib/supabase");
+      await archiveTrip(currentTrip);
+      
+      const newTrip = prompt("此行程已歸檔！請輸入下一個新行程名稱：", "新行程");
+      const finalName = newTrip?.trim() || "本次行程";
+      saveCurrentTrip(finalName);
+      loadReceipts();
+      alert("歸檔成功，已為您開啟新行程！");
+    } catch (err: any) {
+      alert(err.message || "歸檔失敗");
     }
   };
 
@@ -151,32 +175,45 @@ export default function App() {
 
       {/* Trip Selector Header */}
       <header style={{
-        padding: "12px 16px",
+        padding: "10px 16px",
         background: "#fff",
         borderBottom: "1px solid #e2e8f0",
         display: "flex",
         alignItems: "center",
-        gap: 10,
+        gap: 8,
         position: "sticky",
         top: 0,
         zIndex: 150
       }}>
-        <div style={{ fontSize: 18 }}>🗺️</div>
-        <select 
-          style={{ 
-            flex: 1, padding: "6px 12px", borderRadius: 10, border: "1.5px solid #e2e8f0", 
-            background: "#f8fafc", fontSize: 14, fontWeight: 700 
-          }}
-          value={currentTrip}
-          onChange={(e) => saveCurrentTrip(e.target.value)}
-        >
-          {allTripNames.map(t => <option key={t} value={t}>{t}</option>)}
-        </select>
+        <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+          <select 
+            style={{ 
+              flex: 1, padding: "8px 12px", borderRadius: 12, border: "1.5px solid #e2e8f0", 
+              background: "#f8fafc", fontSize: 15, fontWeight: 800, color: "#1e3a8a",
+              minWidth: 0, textOverflow: "ellipsis"
+            }}
+            value={currentTrip}
+            onChange={(e) => saveCurrentTrip(e.target.value)}
+          >
+            {allTripNames.map(t => <option key={t} value={t}>{t}</option>)}
+          </select>
+          <button 
+            onClick={handleRenameTrip}
+            style={{ border: "none", background: "none", fontSize: 16, cursor: "pointer", padding: "4px" }}
+            title="更名行程"
+          >
+            ✏️
+          </button>
+        </div>
         <button 
-          onClick={handleCreateTrip}
-          style={{ border: "none", background: "#f1f5f9", padding: "6px 12px", borderRadius: 10, fontSize: 12, fontWeight: 800, color: "#2563eb", cursor: "pointer" }}
+          onClick={handleArchiveTrip}
+          style={{ 
+            border: "none", background: "#fef2f2", padding: "8px 14px", borderRadius: 12, 
+            fontSize: 13, fontWeight: 800, color: "#ef4444", cursor: "pointer",
+            boxShadow: "0 2px 4px rgba(239, 68, 68, 0.1)"
+          }}
         >
-          + 新行程
+          🏁 歸檔
         </button>
       </header>
 

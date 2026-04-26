@@ -46,11 +46,21 @@ const categoryIconMap: Record<string, string> = {
 };
 
 const currencySymbols: Record<string, string> = {
-  TWD: "NT$", JPY: "¥", USD: "$", EUR: "€",
+  TWD: "NT$", JPY: "¥", USD: "$", EUR: "€", HKD: "HK$", THB: "฿", KRW: "₩",
 };
 
+const DESTINATIONS = [
+  { id: "tw", name: "🇹🇼 台灣", currency: "TWD", rate: 1 },
+  { id: "jp", name: "🇯🇵 日本", currency: "JPY", rate: 0.22 },
+  { id: "hk", name: "🇭🇰 香港", currency: "HKD", rate: 4.1 },
+  { id: "th", name: "🇹🇭 泰國", currency: "THB", rate: 0.92 },
+  { id: "us", name: "🇺🇸 美國", currency: "USD", rate: 32.2 },
+  { id: "eu", name: "🇪🇺 歐洲", currency: "EUR", rate: 35.5 },
+  { id: "kr", name: "🇰🇷 韓國", currency: "KRW", rate: 0.024 },
+];
+
 /* ── Image Resize ── */
-function resizeImage(file: File, maxDim = 1200): Promise<{ base64: string; mediaType: string; previewUrl: string }> {
+function resizeImage(file: File, maxDim = 1000): Promise<{ base64: string; mediaType: string; previewUrl: string }> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -131,8 +141,9 @@ interface Props {
 /* ── Component ── */
 export default function ReceiptRecorderCard({ onSaved, receiptCount }: Props) {
   const [inputMode, setInputMode] = useState<InputMode>("camera");
-  const [exchangeRate, setExchangeRate] = useState<number>(0.22);
-  const [manualForm, setManualForm] = useState<ManualFormState>({ amount: "", currency: "TWD", category: "餐飲" });
+  const [destinationId, setDestinationId] = useState("jp");
+  const [exchangeRate, setExchangeRate] = useState(0.22);
+  const [manualForm, setManualForm] = useState<ManualFormState>({ amount: "", currency: "JPY", category: "餐飲" });
 
   // Multi-image states
   const [images, setImages] = useState<ImageFile[]>([]);
@@ -194,10 +205,15 @@ export default function ReceiptRecorderCard({ onSaved, receiptCount }: Props) {
     for (let i = 0; i < images.length; i++) {
       const img = images[i];
       try {
+        const dest = DESTINATIONS.find(d => d.id === destinationId);
         const res = await fetch("/api/ocr", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ image: img.base64, mediaType: img.mediaType }),
+          body: JSON.stringify({ 
+            image: img.base64, 
+            mediaType: img.mediaType,
+            targetCurrency: dest?.currency
+          }),
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || `辨識失敗 (${res.status})`);
@@ -328,6 +344,30 @@ export default function ReceiptRecorderCard({ onSaved, receiptCount }: Props) {
         {/* Header */}
         <div style={s.header}>
           <div style={s.headerTitle}>📱 收據記錄</div>
+
+          {/* Destination Selector */}
+          <div style={{ marginTop: 10, display: "flex", justifyContent: "center", gap: 8, flexWrap: "wrap" }}>
+            {DESTINATIONS.map(d => (
+              <button
+                key={d.id}
+                onClick={() => {
+                  setDestinationId(d.id);
+                  setExchangeRate(d.rate);
+                  setManualForm(prev => ({ ...prev, currency: d.currency as any }));
+                }}
+                style={{
+                  border: destinationId === d.id ? "2px solid #2563eb" : "1px solid #e2e8f0",
+                  background: destinationId === d.id ? "#eff6ff" : "#fff",
+                  borderRadius: 12, padding: "6px 12px", fontSize: 13, fontWeight: 600,
+                  cursor: "pointer", transition: "all 0.2s",
+                  display: "flex", alignItems: "center", gap: 4,
+                }}
+              >
+                {d.name}
+              </button>
+            ))}
+          </div>
+
           <div style={s.headerSub}>
             拍照即辨識 · 支援多張同時處理
             <div style={{ marginTop: 8, display: "flex", justifyContent: "center", gap: 12 }}>

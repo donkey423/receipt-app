@@ -29,11 +29,9 @@ ${targetCurrency ? `幣別：${targetCurrency}` : ""}
 {
   "currency": "代碼",
   "total_amount": 數字,
-  "category": "分類名",
   "date": "YYYY-MM-DD",
   "items": [ { "name": "名稱", "price": 價格, "quantity": 數量 } ]
-}
-分類：餐飲、交通、日用品、娛樂、醫療、學習、其他`;
+}`;
 
   try {
     const response = await fetch(

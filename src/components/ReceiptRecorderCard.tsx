@@ -5,9 +5,9 @@ import { createReceipt, fetchReceipts, ReceiptItem } from "../lib/supabase";
 interface ReceiptData {
   currency: string;
   total_amount: number;
-  category: string;
+  category?: string;
   date?: string;
-  icon: string;
+  icon?: string;
   items: ReceiptItem[];
   note?: string;
 }
@@ -31,16 +31,12 @@ type InputMode = "camera" | "manual";
 
 interface ManualFormState {
   amount: string;
-  category: string;
   date: string;
   note: string;
 }
 
 /* ── Constants ── */
-const categoryIconMap: Record<string, string> = {
-  餐飲: "🍔", 交通: "🚌", 日用品: "🛒",
-  娛樂: "🎮", 醫療: "💊", 學習: "📚", 其他: "🧾",
-};
+// Category functionality removed
 
 const currencySymbols: Record<string, string> = {
   TWD: "NT$", JPY: "¥", USD: "$", EUR: "€", HKD: "HK$", THB: "฿", KRW: "₩",
@@ -160,7 +156,6 @@ export default function ReceiptRecorderCard({ onSaved, receiptCount, existingNot
   const [isRateLoading, setIsRateLoading] = useState(false);
   const [manualForm, setManualForm] = useState<ManualFormState>({ 
     amount: "", 
-    category: "餐飲",
     date: new Date().toISOString().split("T")[0],
     note: ""
   });
@@ -246,7 +241,7 @@ export default function ReceiptRecorderCard({ onSaved, receiptCount, existingNot
         
         const newRes: OcrResult = {
           image: img,
-          receipt: { ...data, icon: categoryIconMap[data.category] || "🧾" },
+          receipt: { ...data, icon: "🧾", category: "其他" },
           error: "", saving: false, saved: false,
         };
         setResults(prev => [newRes, ...prev]); // Add to top of list
@@ -298,8 +293,8 @@ export default function ReceiptRecorderCard({ onSaved, receiptCount, existingNot
         total_amount: receipt.total_amount,
         twd_amount: twdAmount,
         exchange_rate: receipt.currency !== "TWD" ? exchangeRate : null,
-        category: receipt.category,
-        icon: receipt.icon,
+        category: receipt.category || "其他",
+        icon: receipt.icon || "🧾",
         items: receipt.items,
         created_at: receipt.date ? new Date(receipt.date).toISOString() : undefined,
         note: receipt.note || null,
@@ -335,8 +330,8 @@ export default function ReceiptRecorderCard({ onSaved, receiptCount, existingNot
         total_amount: amount,
         twd_amount: twdAmount,
         exchange_rate: currency !== "TWD" ? exchangeRate : null,
-        category: manualForm.category,
-        icon: categoryIconMap[manualForm.category],
+        category: "其他",
+        icon: "🧾",
         items: [{ name: "手動記帳", price: amount, quantity: 1 }],
         created_at: new Date(manualForm.date).toISOString(),
         note: manualForm.note || null,
@@ -369,7 +364,7 @@ export default function ReceiptRecorderCard({ onSaved, receiptCount, existingNot
         ...r,
         receipt: {
           ...newReceipt,
-          icon: categoryIconMap[newReceipt.category] || "🧾"
+          icon: "🧾"
         }
       };
     }));
@@ -403,7 +398,7 @@ export default function ReceiptRecorderCard({ onSaved, receiptCount, existingNot
   const handleReset = () => {
     setImages([]); setResults([]); setError("");
     setManualReceipt(null); setManualSaved(false);
-    setManualForm({ amount: "", category: "餐飲", date: new Date().toISOString().split("T")[0], note: "" });
+    setManualForm({ amount: "", date: new Date().toISOString().split("T")[0], note: "" });
   };
 
   const successCount = results.filter(r => r.receipt && !r.error).length;
@@ -538,15 +533,7 @@ export default function ReceiptRecorderCard({ onSaved, receiptCount, existingNot
                   style={s.input} value={manualForm.amount}
                   onChange={(e) => setManualForm((p) => ({ ...p, amount: e.target.value }))} />
               </div>
-              <div>
-                <label style={s.label}>分類</label>
-                <select style={s.input} value={manualForm.category}
-                  onChange={(e) => setManualForm((p) => ({ ...p, category: e.target.value as any }))}>
-                  {Object.entries(categoryIconMap).map(([c, icon]) => (
-                    <option key={c} value={c}>{icon} {c}</option>
-                  ))}
-                </select>
-              </div>
+
               <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                 <div>
                   <label style={s.label}>消費日期</label>
@@ -608,13 +595,7 @@ export default function ReceiptRecorderCard({ onSaved, receiptCount, existingNot
                     <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 8 }}>
                       <div style={{ display: "flex", gap: 8, flexDirection: "column" }}>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                          <select
-                            style={{ ...s.input, padding: "6px 10px", fontSize: 14, width: "auto", borderRadius: 10 }}
-                            value={r.receipt.category}
-                            onChange={(e) => handleResultEdit(i, { category: e.target.value })}
-                          >
-                            {Object.keys(categoryIconMap).map(c => <option key={c} value={c}>{c}</option>)}
-                          </select>
+
                           
                           <input
                             type="date"

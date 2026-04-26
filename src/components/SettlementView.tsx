@@ -59,8 +59,7 @@ export default function SettlementView({ receipts, loading }: Props) {
           date: r.created_at,
           effectiveNote,
           itemTwd,
-          category: r.category,
-          icon: r.icon,
+
           currency: r.currency
         });
       });
@@ -152,7 +151,7 @@ export default function SettlementView({ receipts, loading }: Props) {
                     {item.name}
                   </div>
                   <div style={s.itemDate}>
-                    {new Date(item.date).toLocaleDateString()} · {item.icon} {item.category}
+                    {new Date(item.date).toLocaleDateString()}
                   </div>
                 </div>
                 <div style={s.itemPrice}>

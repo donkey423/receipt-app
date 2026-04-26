@@ -25,8 +25,8 @@ export interface Receipt {
   total_amount: number;
   twd_amount: number;
   exchange_rate: number | null;
-  category: string;
-  icon: string;
+  category?: string;
+  icon?: string;
   items: ReceiptItem[];
   note: string | null;
   trip_name: string;
@@ -38,8 +38,8 @@ export interface ReceiptInsert {
   total_amount: number;
   twd_amount: number;
   exchange_rate?: number | null;
-  category: string;
-  icon: string;
+  category?: string;
+  icon?: string;
   items: ReceiptItem[];
   created_at?: string;
   note?: string | null;

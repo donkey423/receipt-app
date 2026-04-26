@@ -6,10 +6,7 @@ const currencySymbols: Record<string, string> = {
   TWD: "NT$", JPY: "¥", USD: "$", EUR: "€",
 };
 
-const categoryColors: Record<string, string> = {
-  餐飲: "#f97316", 交通: "#3b82f6", 日用品: "#10b981",
-  娛樂: "#8b5cf6", 醫療: "#ef4444", 學習: "#06b6d4", 其他: "#64748b",
-};
+// Category colors removed
 
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr);
@@ -159,7 +156,7 @@ export default function ReceiptList({ receipts, loading, onDelete, existingNotes
   const handleExportCSV = () => {
     if (receipts.length === 0) return;
     
-    let csv = "日期,時間,分類,幣別,外幣總額,台幣總額,匯率,備註,商品明細\n";
+    let csv = "日期,時間,幣別,外幣總額,台幣總額,匯率,備註,商品明細\n";
     
     receipts.forEach(r => {
       const d = new Date(r.created_at);
@@ -169,7 +166,7 @@ export default function ReceiptList({ receipts, loading, onDelete, existingNotes
       const itemsStr = (r.items || []).map(item => `${item.name} (${item.quantity})`).join(" + ");
       const safeItems = `"${itemsStr.replace(/"/g, '""')}"`;
       
-      csv += `${date},${time},${r.category},${r.currency},${r.total_amount || 0},${r.twd_amount || r.total_amount || 0},${r.exchange_rate || 1},${r.note || "我"},${safeItems}\n`;
+      csv += `${date},${time},${r.currency},${r.total_amount || 0},${r.twd_amount || r.total_amount || 0},${r.exchange_rate || 1},${r.note || "我"},${safeItems}\n`;
     });
 
     const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
@@ -240,7 +237,6 @@ export default function ReceiptList({ receipts, loading, onDelete, existingNotes
               <div style={s.groupLabel}>{group.label}</div>
               {group.items.map((r) => {
                 const isExpanded = expandedId === r.id;
-                const color = categoryColors[r.category] || "#64748b";
                 return (
                   <div key={r.id}>
                     <div
@@ -250,12 +246,8 @@ export default function ReceiptList({ receipts, loading, onDelete, existingNotes
                       }}
                       onClick={() => setExpandedId(isExpanded ? null : r.id)}
                     >
-                      <div style={{ ...s.iconCircle, background: `${color}15`, color }}>
-                        {r.icon || "🧾"}
-                      </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 15, fontWeight: 600 }}>{r.category}</div>
-                        <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>
+                        <div style={{ fontSize: 15, fontWeight: 600 }}>
                           {formatDate(r.created_at)} · {r.items?.length || 0} 項
                         </div>
                         {r.note && (

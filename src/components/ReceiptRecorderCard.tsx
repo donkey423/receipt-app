@@ -142,6 +142,7 @@ const s: Record<string, React.CSSProperties> = {
     fontWeight: 700, border: "none", cursor: "pointer", transition: "transform 0.1s, box-shadow 0.2s",
   },
   input: {
+    boxSizing: "border-box",
     width: "100%", border: "1.5px solid #e2e8f0", background: "#f8fafc", borderRadius: 14,
     padding: "12px 16px", fontSize: 15, outline: "none", color: "#1e293b", fontFamily: "inherit",
   },

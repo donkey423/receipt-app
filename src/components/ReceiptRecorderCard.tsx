@@ -47,16 +47,24 @@ const categoryIconMap: Record<string, string> = {
 
 const currencySymbols: Record<string, string> = {
   TWD: "NT$", JPY: "¥", USD: "$", EUR: "€", HKD: "HK$", THB: "฿", KRW: "₩",
+  CHF: "Fr.", ISK: "kr.", VND: "₫", SGD: "S$", CNY: "¥", GBP: "£", AUD: "A$",
 };
 
 const DESTINATIONS = [
-  { id: "tw", name: "🇹🇼 台灣", currency: "TWD", rate: 1 },
   { id: "jp", name: "🇯🇵 日本", currency: "JPY", rate: 0.22 },
   { id: "hk", name: "🇭🇰 香港", currency: "HKD", rate: 4.1 },
-  { id: "th", name: "🇹🇭 泰國", currency: "THB", rate: 0.92 },
-  { id: "us", name: "🇺🇸 美國", currency: "USD", rate: 32.2 },
-  { id: "eu", name: "🇪🇺 歐洲", currency: "EUR", rate: 35.5 },
   { id: "kr", name: "🇰🇷 韓國", currency: "KRW", rate: 0.024 },
+  { id: "th", name: "🇹🇭 泰國", currency: "THB", rate: 0.92 },
+  { id: "ch", name: "🇨🇭 瑞士", currency: "CHF", rate: 35.5 },
+  { id: "is", name: "🇮🇸 冰島", currency: "ISK", rate: 0.23 },
+  { id: "vn", name: "🇻🇳 越南", currency: "VND", rate: 0.0013 },
+  { id: "sg", name: "🇸🇬 新加坡", currency: "SGD", rate: 24.1 },
+  { id: "eu", name: "🇪🇺 歐洲", currency: "EUR", rate: 35.5 },
+  { id: "gb", name: "🇬🇧 英國", currency: "GBP", rate: 41.5 },
+  { id: "us", name: "🇺🇸 美國", currency: "USD", rate: 32.2 },
+  { id: "au", name: "🇦🇺 澳洲", currency: "AUD", rate: 21.5 },
+  { id: "cn", name: "🇨🇳 中國", currency: "CNY", rate: 4.5 },
+  { id: "tw", name: "🇹🇼 台灣", currency: "TWD", rate: 1 },
 ];
 
 /* ── Image Resize ── */
@@ -143,6 +151,7 @@ export default function ReceiptRecorderCard({ onSaved, receiptCount }: Props) {
   const [inputMode, setInputMode] = useState<InputMode>("camera");
   const [destinationId, setDestinationId] = useState("jp");
   const [exchangeRate, setExchangeRate] = useState(0.22);
+  const [isRateLoading, setIsRateLoading] = useState(false);
   const [manualForm, setManualForm] = useState<ManualFormState>({ amount: "", currency: "JPY", category: "餐飲" });
 
   // Multi-image states
@@ -173,6 +182,29 @@ export default function ReceiptRecorderCard({ onSaved, receiptCount }: Props) {
     const newCount = quota + count;
     setQuota(newCount);
     localStorage.setItem("gemini_quota", JSON.stringify({ date: today, count: newCount }));
+  };
+
+  const fetchRate = async (destId: string) => {
+    const dest = DESTINATIONS.find(d => d.id === destId);
+    if (!dest || dest.currency === "TWD") {
+      setExchangeRate(1);
+      return;
+    }
+    
+    setIsRateLoading(true);
+    try {
+      // 使用 open.er-api.com (無須 key)
+      const res = await fetch(`https://open.er-api.com/v6/latest/TWD`);
+      const data = await res.json();
+      if (data.result === "success" && data.rates[dest.currency]) {
+        // 1 TWD = N Foreign -> 1 Foreign = 1/N TWD
+        const rate = 1 / data.rates[dest.currency];
+        setExchangeRate(parseFloat(rate.toFixed(4)));
+      }
+    } catch (e) {
+      console.error("無法取得即時匯率:", e);
+    }
+    setIsRateLoading(false);
   };
 
   /* ── Handlers ── */
@@ -352,7 +384,7 @@ export default function ReceiptRecorderCard({ onSaved, receiptCount }: Props) {
                 key={d.id}
                 onClick={() => {
                   setDestinationId(d.id);
-                  setExchangeRate(d.rate);
+                  fetchRate(d.id);
                   setManualForm(prev => ({ ...prev, currency: d.currency as any }));
                 }}
                 style={{
@@ -366,6 +398,10 @@ export default function ReceiptRecorderCard({ onSaved, receiptCount }: Props) {
                 {d.name}
               </button>
             ))}
+          </div>
+
+          <div style={{ marginTop: 8, fontSize: 12, color: "#2563eb", fontWeight: 700 }}>
+            {isRateLoading ? "⏳ 正在同步即時匯率..." : `💰 當前 ${DESTINATIONS.find(d => d.id === destinationId)?.currency}/TWD 匯率: ${exchangeRate}`}
           </div>
 
           <div style={s.headerSub}>

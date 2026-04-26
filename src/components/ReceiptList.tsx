@@ -6,8 +6,6 @@ const currencySymbols: Record<string, string> = {
   TWD: "NT$", JPY: "¥", USD: "$", EUR: "€",
 };
 
-// Category colors removed
-
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr);
   const now = new Date();

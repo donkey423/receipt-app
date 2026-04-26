@@ -76,8 +76,8 @@ function resizeImage(file: File, maxDim = 800): Promise<{ base64: string; mediaT
         canvas.width = w;
         canvas.height = h;
         canvas.getContext("2d")!.drawImage(img, 0, 0, w, h);
-        const dataUrl = canvas.toDataURL("image/jpeg", 0.6);
-        resolve({ base64: dataUrl.split(",")[1], mediaType: "image/jpeg", previewUrl: dataUrl });
+        const dataUrl = canvas.toDataURL("image/webp", 0.7);
+        resolve({ base64: dataUrl.split(",")[1], mediaType: "image/webp", previewUrl: dataUrl });
       };
       img.onerror = () => reject(new Error("圖片載入失敗"));
       img.src = e.target?.result as string;

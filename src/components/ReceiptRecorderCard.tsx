@@ -377,31 +377,61 @@ export default function ReceiptRecorderCard({ onSaved, receiptCount }: Props) {
         <div style={s.header}>
           <div style={s.headerTitle}>📱 收據記錄</div>
 
-          {/* Destination Selector */}
-          <div style={{ marginTop: 10, display: "flex", justifyContent: "center", gap: 8, flexWrap: "wrap" }}>
-            {DESTINATIONS.map(d => (
-              <button
-                key={d.id}
-                onClick={() => {
-                  setDestinationId(d.id);
-                  fetchRate(d.id);
-                  setManualForm(prev => ({ ...prev, currency: d.currency as any }));
+          {/* Destination Dropdown */}
+          <div style={{ marginTop: 12, display: "flex", justifyContent: "center" }}>
+            <div style={{ position: "relative", width: "100%", maxWidth: 280 }}>
+              <label style={{ ...s.label, textAlign: "center" }}>🌍 選擇旅遊目的地</label>
+              <select
+                value={destinationId}
+                onChange={(e) => {
+                  const id = e.target.value;
+                  const d = DESTINATIONS.find(x => x.id === id);
+                  if (d) {
+                    setDestinationId(id);
+                    fetchRate(id);
+                    setManualForm(prev => ({ ...prev, currency: d.currency as any }));
+                  }
                 }}
                 style={{
-                  border: destinationId === d.id ? "2px solid #2563eb" : "1px solid #e2e8f0",
-                  background: destinationId === d.id ? "#eff6ff" : "#fff",
-                  borderRadius: 12, padding: "6px 12px", fontSize: 13, fontWeight: 600,
-                  cursor: "pointer", transition: "all 0.2s",
-                  display: "flex", alignItems: "center", gap: 4,
+                  ...s.input,
+                  appearance: "none",
+                  textAlign: "center",
+                  background: "#fff",
+                  boxShadow: "0 2px 6px rgba(0,0,0,0.05)",
+                  cursor: "pointer",
                 }}
               >
-                {d.name}
-              </button>
-            ))}
+                {DESTINATIONS.map(d => (
+                  <option key={d.id} value={d.id}>{d.name} ({d.currency})</option>
+                ))}
+              </select>
+              <div style={{
+                position: "absolute", right: 16, bottom: 14, pointerEvents: "none",
+                fontSize: 12, color: "#94a3b8"
+              }}>▼</div>
+            </div>
           </div>
 
-          <div style={{ marginTop: 8, fontSize: 12, color: "#2563eb", fontWeight: 700 }}>
-            {isRateLoading ? "⏳ 正在同步即時匯率..." : `💰 當前 ${DESTINATIONS.find(d => d.id === destinationId)?.currency}/TWD 匯率: ${exchangeRate}`}
+          <div style={{ marginTop: 14, fontSize: 13, color: "#2563eb", fontWeight: 700 }}>
+            {isRateLoading ? (
+              <span className="spinner" style={{ width: 14, height: 14, borderWeight: 2 }} />
+            ) : (
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
+                <span>💰 1 {DESTINATIONS.find(d => d.id === destinationId)?.currency} =</span>
+                <input
+                  type="number"
+                  step="0.0001"
+                  value={exchangeRate}
+                  onChange={(e) => setExchangeRate(Number(e.target.value) || 0)}
+                  style={{
+                    width: 90, border: "1px solid #e2e8f0", borderRadius: 8, padding: "4px 8px",
+                    fontSize: 14, fontWeight: 800, textAlign: "center", background: "#f8fafc",
+                    color: "#2563eb",
+                  }}
+                />
+                <span>TWD</span>
+              </div>
+            )}
           </div>
 
           <div style={s.headerSub}>

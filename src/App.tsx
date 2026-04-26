@@ -3,13 +3,15 @@ import { fetchReceipts, type Receipt } from "./lib/supabase";
 import ReceiptRecorderCard from "./components/ReceiptRecorderCard";
 import ReceiptList from "./components/ReceiptList";
 import ReceiptStats from "./components/ReceiptStats";
+import SettlementView from "./components/SettlementView";
 
-type Tab = "record" | "list" | "stats";
+type Tab = "record" | "list" | "stats" | "settlement";
 
 const tabConfig: { key: Tab; icon: string; label: string }[] = [
   { key: "record", icon: "📝", label: "記錄" },
   { key: "list", icon: "📋", label: "清單" },
   { key: "stats", icon: "📊", label: "統計" },
+  { key: "settlement", icon: "🤝", label: "成員" },
 ];
 
 const navStyle: Record<string, React.CSSProperties> = {
@@ -115,6 +117,9 @@ export default function App() {
       </div>
       <div style={{ display: tab === "stats" ? "block" : "none" }}>
         <ReceiptStats receipts={receipts} loading={loading} />
+      </div>
+      <div style={{ display: tab === "settlement" ? "block" : "none" }}>
+        <SettlementView />
       </div>
 
       {/* Bottom Nav */}

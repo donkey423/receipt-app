@@ -128,7 +128,7 @@ export default function ReceiptList({ receipts, loading, onDelete }: Props) {
   const handleExportCSV = () => {
     if (receipts.length === 0) return;
     
-    let csv = "日期,時間,分類,幣別,外幣總額,台幣總額,匯率,商品明細\n";
+    let csv = "日期,時間,分類,幣別,外幣總額,台幣總額,匯率,備註,商品明細\n";
     
     receipts.forEach(r => {
       const d = new Date(r.created_at);
@@ -138,7 +138,7 @@ export default function ReceiptList({ receipts, loading, onDelete }: Props) {
       const itemsStr = (r.items || []).map(item => `${item.name} (${item.quantity})`).join(" + ");
       const safeItems = `"${itemsStr.replace(/"/g, '""')}"`;
       
-      csv += `${date},${time},${r.category},${r.currency},${r.total_amount || 0},${r.twd_amount || r.total_amount || 0},${r.exchange_rate || 1},${safeItems}\n`;
+      csv += `${date},${time},${r.category},${r.currency},${r.total_amount || 0},${r.twd_amount || r.total_amount || 0},${r.exchange_rate || 1},${r.note || "我"},${safeItems}\n`;
     });
 
     const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
@@ -227,6 +227,11 @@ export default function ReceiptList({ receipts, loading, onDelete }: Props) {
                         <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>
                           {formatDate(r.created_at)} · {r.items?.length || 0} 項
                         </div>
+                        {r.note && (
+                          <div style={{ display: "inline-flex", marginTop: 4, background: "#f1f5f9", padding: "2px 6px", borderRadius: 6, fontSize: 11, color: "#64748b", fontWeight: 700 }}>
+                            👤 {r.note}
+                          </div>
+                        )}
                       </div>
                       <div style={{ textAlign: "right", flexShrink: 0 }}>
                         <div style={{ fontSize: 16, fontWeight: 700 }}>

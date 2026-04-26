@@ -27,6 +27,7 @@ export interface Receipt {
   category: string;
   icon: string;
   items: ReceiptItem[];
+  note: string | null;
 }
 
 export interface ReceiptInsert {
@@ -38,6 +39,7 @@ export interface ReceiptInsert {
   icon: string;
   items: ReceiptItem[];
   created_at?: string;
+  note?: string | null;
 }
 
 /* ── API Functions ── */

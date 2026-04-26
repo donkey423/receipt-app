@@ -583,48 +583,54 @@ export default function ReceiptRecorderCard({ onSaved, receiptCount }: Props) {
                   {r.receipt ? (
                     <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 8 }}>
                       <div style={{ display: "flex", gap: 8, flexDirection: "column" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                           <select
-                            style={{ ...s.input, padding: "4px 8px", fontSize: 13, width: "auto" }}
+                            style={{ ...s.input, padding: "6px 10px", fontSize: 14, width: "auto", borderRadius: 10 }}
                             value={r.receipt.category}
                             onChange={(e) => handleResultEdit(i, { category: e.target.value })}
                           >
                             {Object.keys(categoryIconMap).map(c => <option key={c} value={c}>{c}</option>)}
                           </select>
-
-                          {r.receipt.currency !== "TWD" ? (
-                            <div style={{ fontSize: 18, fontWeight: 800, color: "#ef4444" }}>
-                              NT$ {convertTwd(r.receipt)?.toLocaleString()}
-                            </div>
-                          ) : (
-                            <div style={{ display: "flex", alignItems: "center", gap: 4, flex: 1 }}>
-                              <span style={{ fontSize: 16, fontWeight: 800, color: "#ef4444" }}>NT$</span>
-                              <input
-                                type="number"
-                                style={{ ...s.input, padding: "4px 8px", fontSize: 16, fontWeight: 800, color: "#ef4444", flex: 1 }}
-                                value={r.receipt.total_amount}
-                                onChange={(e) => handleResultEdit(i, { total_amount: Number(e.target.value) })}
-                              />
-                            </div>
-                          )}
+                          
                           <input
                             type="date"
-                            style={{ ...s.input, padding: "4px 8px", fontSize: 12, width: "auto", border: "1px solid #cbd5e1" }}
+                            style={{ ...s.input, padding: "6px 10px", fontSize: 13, width: "auto", borderRadius: 10, color: "#64748b", border: "1px solid #e2e8f0" }}
                             value={r.receipt.date || new Date().toISOString().split("T")[0]}
                             onChange={(e) => handleResultEdit(i, { date: e.target.value })}
                           />
                         </div>
 
+                        <div style={{ background: "#fef2f2", borderRadius: 12, padding: "12px 14px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: "#ef4444" }}>總額 (TWD)</div>
+                          {r.receipt.currency !== "TWD" ? (
+                            <div style={{ fontSize: 24, fontWeight: 900, color: "#ef4444" }}>
+                              NT$ {convertTwd(r.receipt)?.toLocaleString()}
+                            </div>
+                          ) : (
+                            <div style={{ display: "flex", alignItems: "center", gap: 4, width: "60%" }}>
+                              <span style={{ fontSize: 18, fontWeight: 900, color: "#ef4444" }}>NT$</span>
+                              <input
+                                type="number"
+                                style={{ ...s.input, padding: "2px 8px", fontSize: 20, fontWeight: 900, color: "#ef4444", flex: 1, minWidth: 0, textAlign: "right", background: "transparent", border: "none", borderBottom: "2px solid #fecaca", borderRadius: 0 }}
+                                value={r.receipt.total_amount}
+                                onChange={(e) => handleResultEdit(i, { total_amount: Number(e.target.value) })}
+                              />
+                            </div>
+                          )}
+                        </div>
+
                         {r.receipt.currency !== "TWD" && (
-                          <div style={{ display: "flex", alignItems: "center", gap: 4, background: "#f8fafc", padding: "6px 10px", borderRadius: 8, alignSelf: "flex-start" }}>
-                            <span style={{ fontSize: 12, color: "#64748b" }}>外幣總額：</span>
-                            <span style={{ fontSize: 13, fontWeight: 700, color: "#475569" }}>{currencySymbols[r.receipt.currency] || ""}</span>
-                            <input
-                              type="number"
-                              style={{ ...s.input, padding: "2px 6px", fontSize: 14, fontWeight: 700, minWidth: 80, flex: 1 }}
-                              value={r.receipt.total_amount}
-                              onChange={(e) => handleResultEdit(i, { total_amount: Number(e.target.value) })}
-                            />
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "#f8fafc", padding: "8px 14px", borderRadius: 12 }}>
+                            <span style={{ fontSize: 13, color: "#64748b", fontWeight: 600 }}>外幣結帳</span>
+                            <div style={{ display: "flex", alignItems: "center", gap: 6, width: "55%" }}>
+                              <span style={{ fontSize: 14, fontWeight: 700, color: "#475569" }}>{currencySymbols[r.receipt.currency] || ""}</span>
+                              <input
+                                type="number"
+                                style={{ ...s.input, padding: "6px 8px", fontSize: 15, fontWeight: 700, minWidth: 0, flex: 1, textAlign: "right", border: "1px solid #cbd5e1" }}
+                                value={r.receipt.total_amount}
+                                onChange={(e) => handleResultEdit(i, { total_amount: Number(e.target.value) })}
+                              />
+                            </div>
                           </div>
                         )}
                       </div>

@@ -96,6 +96,30 @@ export default function ReceiptList({ receipts, loading, onDelete }: Props) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [deletingAll, setDeletingAll] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editAmount, setEditAmount] = useState<number>(0);
+  const [editNote, setEditNote] = useState<string>("");
+  const [updating, setUpdating] = useState(false);
+
+  const startEdit = (r: Receipt) => {
+    setEditingId(r.id);
+    setEditAmount(r.twd_amount);
+    setEditNote(r.note || "");
+  };
+
+  const handleUpdate = async (id: string) => {
+    setUpdating(true);
+    try {
+      const { updateReceipt } = await import("../lib/supabase");
+      await updateReceipt(id, { twd_amount: editAmount, note: editNote || null });
+      setEditingId(null);
+      onDelete(); // 使用 onDelete 來觸發 App 重新載入列表
+    } catch (err: any) {
+      alert(err.message || "更新失敗");
+    } finally {
+      setUpdating(false);
+    }
+  };
 
   const handleDelete = async (id: string) => {
     if (!confirm("確定要刪除這筆記錄嗎？")) return;
@@ -259,9 +283,57 @@ export default function ReceiptList({ receipts, loading, onDelete }: Props) {
 
                     {isExpanded && (
                       <div style={s.detailPanel}>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: "#475569", marginBottom: 8 }}>
-                          消費明細
-                        </div>
+                        {editingId === r.id ? (
+                          <div style={{ display: "flex", flexDirection: "column", gap: 12, padding: "4px 0" }}>
+                            <div style={{ fontSize: 13, fontWeight: 700, color: "#1e3a8a" }}>✏️ 快速修改</div>
+                            <div>
+                              <label style={{ fontSize: 11, color: "#64748b", display: "block", marginBottom: 4 }}>台幣金額 (TWD)</label>
+                              <input 
+                                type="number" 
+                                style={{ width: "100%", padding: "10px", borderRadius: 10, border: "1px solid #cbd5e1", fontSize: 16, fontWeight: 700 }}
+                                value={editAmount}
+                                onChange={(e) => setEditAmount(Number(e.target.value))}
+                              />
+                            </div>
+                            <div>
+                              <label style={{ fontSize: 11, color: "#64748b", display: "block", marginBottom: 4 }}>備註 (人名)</label>
+                              <input 
+                                type="text" 
+                                style={{ width: "100%", padding: "10px", borderRadius: 10, border: "1px solid #cbd5e1", fontSize: 14 }}
+                                value={editNote}
+                                onChange={(e) => setEditNote(e.target.value)}
+                                placeholder="如：姐姐"
+                              />
+                            </div>
+                            <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+                              <button
+                                onClick={() => setEditingId(null)}
+                                style={{ flex: 1, padding: "10px", borderRadius: 10, border: "1px solid #e2e8f0", background: "#fff", fontWeight: 600, cursor: "pointer" }}
+                              >
+                                取消
+                              </button>
+                              <button
+                                onClick={() => handleUpdate(r.id)}
+                                disabled={updating}
+                                style={{ flex: 2, padding: "10px", borderRadius: 10, border: "none", background: "#2563eb", color: "#fff", fontWeight: 700, cursor: "pointer", opacity: updating ? 0.7 : 1 }}
+                              >
+                                {updating ? "儲存中..." : "💾 儲存修改"}
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                              <div style={{ fontSize: 13, fontWeight: 600, color: "#475569" }}>消費明細</div>
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); startEdit(r); }}
+                                style={{ border: "none", background: "#fff", color: "#2563eb", fontSize: 12, fontWeight: 700, padding: "4px 10px", borderRadius: 8, cursor: "pointer", boxShadow: "0 1px 2px rgba(0,0,0,0.1)" }}
+                              >
+                                ✎ 修改金額/備註
+                              </button>
+                            </div>
+                          </>
+                        )}
                         {(r.items || []).map((item, i) => (
                           <div
                             key={i}

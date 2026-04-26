@@ -90,3 +90,15 @@ export async function deleteAllReceipts(): Promise<void> {
     throw new Error(err.message || `全部刪除失敗 (${res.status})`);
   }
 }
+
+export async function updateReceipt(id: string, data: Partial<ReceiptInsert>): Promise<void> {
+  const res = await fetch(`${SUPABASE_URL}/receipts?id=eq.${id}`, {
+    method: "PATCH",
+    headers,
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || `更新失敗 (${res.status})`);
+  }
+}

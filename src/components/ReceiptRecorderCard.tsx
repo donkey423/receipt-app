@@ -70,8 +70,8 @@ const DESTINATIONS = [
 ];
 
 /* ── Image Resize ── */
-// Max dimension reduced to 800 for faster processing
-function resizeImage(file: File, maxDim = 800): Promise<{ base64: string; mediaType: string; previewUrl: string }> {
+// Further reduced to 720 for maximum speed/avoid timeouts
+function resizeImage(file: File, maxDim = 720): Promise<{ base64: string; mediaType: string; previewUrl: string }> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -86,8 +86,8 @@ function resizeImage(file: File, maxDim = 800): Promise<{ base64: string; mediaT
         canvas.width = w;
         canvas.height = h;
         canvas.getContext("2d")!.drawImage(img, 0, 0, w, h);
-        // Reduce quality to 0.7 for faster upload
-        const dataUrl = canvas.toDataURL("image/jpeg", 0.7);
+        // Reduced to 0.6 for even faster processing
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.6);
         resolve({ base64: dataUrl.split(",")[1], mediaType: "image/jpeg", previewUrl: dataUrl });
       };
       img.onerror = () => reject(new Error("圖片載入失敗"));

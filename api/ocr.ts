@@ -18,14 +18,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: "未提供圖片" });
   }
 
-  const prompt = `你是一個專業的收據辨識助手。請仔細分析這張收據圖片，提取詳細資訊。
-${targetCurrency ? `提示：這張收據很可能是 ${targetCurrency} 幣別。` : ""}
-特別注意：請列出每一項商品的具體名稱。
+  const prompt = `你是一個收據辨識助手。請分析圖片並提取資訊。
+${targetCurrency ? `提示：這張收據可能是 ${targetCurrency} 幣別。` : ""}
+重要：
+1. 如果一張圖片中有多張收據，請優先辨識最清晰或總金額最大的一張即可。
+2. 必須列出所有商品的名稱、單價、數量。
+3. 日期格式固定為 YYYY-MM-DD。
 
-回傳格式（只回傳純 JSON）：
+回傳格式（純 JSON）：
 {
   "currency": "幣別代碼",
-  "total_amount": 總額數字,
+  "total_amount": 總額,
   "category": "分類",
   "date": "YYYY-MM-DD",
   "items": [ { "name": "名稱", "price": 單價, "quantity": 數量 } ]

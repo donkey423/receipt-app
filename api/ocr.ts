@@ -61,6 +61,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             temperature: 0.1,
             maxOutputTokens: 1024,
           },
+          safetySettings: [
+            { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+            { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+            { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+            { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
+          ],
         }),
       }
     );
@@ -76,9 +82,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
 
+    if (!text) {
+      // 檢查是否被安全性攔截
+      const reason = data.candidates?.[0]?.finishReason;
+      return res.status(500).json({ error: `AI 拒絕辨識或內容為空 (原因: ${reason || "未知"})` });
+    }
+
     // 更加強健的 JSON 提取邏輯
     let cleanedText = text.trim();
-    // 如果有 markdown 代碼塊，先拔掉它
     if (cleanedText.includes("```")) {
       cleanedText = cleanedText.replace(/```(?:json)?([\s\S]*?)```/g, "$1").trim();
     }
@@ -97,7 +108,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    return res.status(500).json({ error: "無法從回應中提取收據資料" });
+    return res.status(500).json({ error: `無法從 AI 回應中提取資料。AI 說了: ${text.substring(0, 50)}...` });
   } catch (error: any) {
     console.error("OCR handler error:", error);
     return res.status(500).json({ error: error.message || "伺服器錯誤" });

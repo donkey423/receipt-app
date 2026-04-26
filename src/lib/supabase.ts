@@ -15,6 +15,7 @@ export interface ReceiptItem {
   name: string;
   price: number;
   quantity: number;
+  note?: string | null;
 }
 
 export interface Receipt {

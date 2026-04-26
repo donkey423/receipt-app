@@ -1,13 +1,7 @@
 import { ChangeEvent, FormEvent, useState, useEffect } from "react";
-import { createReceipt, fetchReceipts } from "../lib/supabase";
+import { createReceipt, fetchReceipts, ReceiptItem } from "../lib/supabase";
 
 /* ── Types ── */
-interface ReceiptItem {
-  name: string;
-  price: number;
-  quantity: number;
-}
-
 interface ReceiptData {
   currency: string;
   total_amount: number;
@@ -155,10 +149,11 @@ const s: Record<string, React.CSSProperties> = {
 interface Props {
   onSaved?: () => void;
   receiptCount?: number;
+  existingNotes: string[];
 }
 
 /* ── Component ── */
-export default function ReceiptRecorderCard({ onSaved, receiptCount }: Props) {
+export default function ReceiptRecorderCard({ onSaved, receiptCount, existingNotes }: Props) {
   const [inputMode, setInputMode] = useState<InputMode>("camera");
   const [destinationId, setDestinationId] = useState("jp");
   const [exchangeRate, setExchangeRate] = useState(0.22);
@@ -169,14 +164,6 @@ export default function ReceiptRecorderCard({ onSaved, receiptCount }: Props) {
     date: new Date().toISOString().split("T")[0],
     note: ""
   });
-
-  const [existingNotes, setExistingNotes] = useState<string[]>([]);
-  useEffect(() => {
-    fetchReceipts().then(res => {
-      const notes = res.map(r => r.note).filter(Boolean) as string[];
-      setExistingNotes(Array.from(new Set(notes)));
-    }).catch(console.error);
-  }, []);
 
   // Multi-image states
   const [images, setImages] = useState<ImageFile[]>([]);
@@ -560,16 +547,18 @@ export default function ReceiptRecorderCard({ onSaved, receiptCount }: Props) {
                   ))}
                 </select>
               </div>
-              <div>
-                <label style={s.label}>消費日期</label>
-                <input type="date" style={s.input} value={manualForm.date}
-                  onChange={(e) => setManualForm((p) => ({ ...p, date: e.target.value }))} />
-              </div>
-              <div>
-                <label style={s.label}>📝 備註 (選填)</label>
-                <input type="text" list="existing-notes" placeholder="如：姐姐 (空著即為「我」)"
-                  style={s.input} value={manualForm.note}
-                  onChange={(e) => setManualForm((p) => ({ ...p, note: e.target.value }))} />
+              <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
+                <div style={{ flex: 1, minWidth: 140 }}>
+                  <label style={s.label}>消費日期</label>
+                  <input type="date" style={s.input} value={manualForm.date}
+                    onChange={(e) => setManualForm((p) => ({ ...p, date: e.target.value }))} />
+                </div>
+                <div style={{ flex: 1, minWidth: 140 }}>
+                  <label style={s.label}>📝 總備註 (選填)</label>
+                  <input type="text" list="existing-notes" placeholder="人名"
+                    style={s.input} value={manualForm.note}
+                    onChange={(e) => setManualForm((p) => ({ ...p, note: e.target.value }))} />
+                </div>
               </div>
 
               <button type="submit" disabled={manualSaving || manualSaved} style={{
@@ -621,9 +610,6 @@ export default function ReceiptRecorderCard({ onSaved, receiptCount }: Props) {
                 border: r.error && !r.receipt ? "1px solid #fecaca" : r.saved ? "1px solid #bbf7d0" : "none",
               }}>
                 <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                  <img src={r.image.previewUrl} alt="" style={{
-                    width: 52, height: 52, objectFit: "cover", borderRadius: 12, flexShrink: 0,
-                  }} />
                   {r.receipt ? (
                     <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 8 }}>
                       <div style={{ display: "flex", gap: 8, flexDirection: "column" }}>
@@ -735,6 +721,20 @@ export default function ReceiptRecorderCard({ onSaved, receiptCount }: Props) {
                                 onChange={(e) => {
                                   const newItems = [...r.receipt!.items];
                                   newItems[idx] = { ...item, quantity: Number(e.target.value) };
+                                  handleResultEdit(i, { items: newItems });
+                                }}
+                              />
+                            </div>
+                            <div style={{ display: "flex", gap: 4, width: "100%", marginTop: 4 }}>
+                              <input
+                                type="text"
+                                list="existing-notes"
+                                placeholder="👤 品項備註 (如：姐姐)"
+                                style={{ ...s.input, padding: "4px 8px", fontSize: 11, flex: 1, borderRadius: 8, background: "#f8fafc" }}
+                                value={item.note || ""}
+                                onChange={(e) => {
+                                  const newItems = [...r.receipt!.items];
+                                  newItems[idx] = { ...item, note: e.target.value };
                                   handleResultEdit(i, { items: newItems });
                                 }}
                               />

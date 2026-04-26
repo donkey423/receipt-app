@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { fetchReceipts, Receipt } from "../lib/supabase";
+import { useState, useMemo } from "react";
+import { type Receipt } from "../lib/supabase";
 
 const s: Record<string, React.CSSProperties> = {
   container: { padding: 16, display: "flex", flexDirection: "column", gap: 16, animation: "fadeSlideUp 0.4s ease-out" },
@@ -44,15 +44,45 @@ interface Props {
 export default function SettlementView({ receipts, loading }: Props) {
   const [selectedPerson, setSelectedPerson] = useState<string>("我 (我自己)");
 
-  const people = Array.from(new Set(receipts.map(r => r.note || "我 (我自己)")));
-  if (!people.includes("我 (我自己)")) people.unshift("我 (我自己)");
+  const allItems = useMemo(() => {
+    const list: any[] = [];
+    receipts.forEach(r => {
+      r.items?.forEach(item => {
+        const effectiveNote = item.note || r.note || "我 (我自己)";
+        const itemTwd = r.currency === "TWD" 
+          ? (item.price * item.quantity)
+          : Math.round(item.price * item.quantity * (r.exchange_rate || 1));
+        
+        list.push({
+          ...item,
+          receiptId: r.id,
+          date: r.created_at,
+          effectiveNote,
+          itemTwd,
+          category: r.category,
+          icon: r.icon,
+          currency: r.currency
+        });
+      });
+    });
+    return list;
+  }, [receipts]);
 
-  const filteredReceipts = receipts.filter(r => {
-    const note = r.note || "我 (我自己)";
-    return note === selectedPerson;
-  });
+  const people = useMemo(() => {
+    return Array.from(new Set(allItems.map(i => i.effectiveNote))).sort((a, b) => {
+      if (a === "我 (我自己)") return -1;
+      if (b === "我 (我自己)") return 1;
+      return a.localeCompare(b);
+    });
+  }, [allItems]);
 
-  const totalTwd = filteredReceipts.reduce((sum, r) => sum + r.twd_amount, 0);
+  const filteredItems = useMemo(() => {
+    return allItems.filter(i => i.effectiveNote === selectedPerson);
+  }, [allItems, selectedPerson]);
+
+  const totalTwd = useMemo(() => {
+    return filteredItems.reduce((sum, i) => sum + i.itemTwd, 0);
+  }, [filteredItems]);
 
   if (loading) {
     return <div style={{ display: "flex", justifyContent: "center", padding: 50 }}><div className="spinner" /></div>;
@@ -87,26 +117,25 @@ export default function SettlementView({ receipts, loading }: Props) {
       </div>
 
       <div style={s.card}>
-        <div style={{ fontSize: 16, fontWeight: 800, color: "#1e3a8a", marginBottom: 16 }}>消費清單 ({filteredReceipts.length} 筆)</div>
+        <div style={{ fontSize: 16, fontWeight: 800, color: "#1e3a8a", marginBottom: 16 }}>消費清單 ({filteredItems.length} 筆項目)</div>
         <div style={s.itemList}>
-          {filteredReceipts.length === 0 ? (
+          {filteredItems.length === 0 ? (
             <div style={s.empty}>目前沒有該成員的紀錄</div>
           ) : (
-            filteredReceipts.map(r => (
-              <div key={r.id} style={s.itemRow}>
+            filteredItems.map((item, idx) => (
+              <div key={`${item.receiptId}-${idx}`} style={s.itemRow}>
                 <div style={s.itemInfo}>
                   <div style={s.itemName}>
-                    {r.icon} {r.category}
-                    {r.items.length > 0 && <span style={{ fontWeight: 400, color: "#64748b", marginLeft: 6 }}>
-                      ({r.items[0].name}{r.items.length > 1 ? ` 等 ${r.items.length} 項` : ""})
-                    </span>}
+                    {item.name}
                   </div>
-                  <div style={s.itemDate}>{new Date(r.created_at).toLocaleDateString()}</div>
+                  <div style={s.itemDate}>
+                    {new Date(item.date).toLocaleDateString()} · {item.icon} {item.category}
+                  </div>
                 </div>
                 <div style={s.itemPrice}>
-                  <div style={s.twdPrice}>NT$ {r.twd_amount.toLocaleString()}</div>
-                  {r.currency !== "TWD" && (
-                    <div style={s.origPrice}>{r.total_amount.toLocaleString()} {r.currency}</div>
+                  <div style={s.twdPrice}>NT$ {item.itemTwd.toLocaleString()}</div>
+                  {item.currency !== "TWD" && (
+                    <div style={s.origPrice}>{item.price.toLocaleString()} x {item.quantity} {item.currency}</div>
                   )}
                 </div>
               </div>

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useMemo } from "react";
 import { fetchReceipts, type Receipt } from "./lib/supabase";
 import ReceiptRecorderCard from "./components/ReceiptRecorderCard";
 import ReceiptList from "./components/ReceiptList";
@@ -56,11 +56,21 @@ export default function App() {
       setReceipts(data);
     } catch (err: any) {
       console.error("Failed to fetch receipts:", err);
-      setError(err.message || "載入失敗");
     } finally {
       setLoading(false);
     }
   }, []);
+
+  const existingNotes = useMemo(() => {
+    const notes = new Set<string>();
+    receipts.forEach(r => {
+      if (r.note) notes.add(r.note);
+      r.items?.forEach((i: any) => {
+        if (i.note) notes.add(i.note);
+      });
+    });
+    return Array.from(notes);
+  }, [receipts]);
 
   useEffect(() => {
     loadReceipts();
@@ -110,10 +120,10 @@ export default function App() {
 
       {/* Tab Content */}
       <div style={{ display: tab === "record" ? "block" : "none" }}>
-        <ReceiptRecorderCard onSaved={handleSaved} receiptCount={receipts.length} />
+        <ReceiptRecorderCard onSaved={handleSaved} receiptCount={receipts.length} existingNotes={existingNotes} />
       </div>
       <div style={{ display: tab === "list" ? "block" : "none" }}>
-        <ReceiptList receipts={receipts} loading={loading} onDelete={handleSaved} />
+        <ReceiptList receipts={receipts} loading={loading} onDelete={handleSaved} existingNotes={existingNotes} />
       </div>
       <div style={{ display: tab === "stats" ? "block" : "none" }}>
         <ReceiptStats receipts={receipts} loading={loading} />

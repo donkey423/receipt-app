@@ -90,9 +90,10 @@ interface Props {
   receipts: Receipt[];
   loading: boolean;
   onDelete: () => void;
+  existingNotes: string[];
 }
 
-export default function ReceiptList({ receipts, loading, onDelete }: Props) {
+export default function ReceiptList({ receipts, loading, onDelete, existingNotes }: Props) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [deletingAll, setDeletingAll] = useState(false);
@@ -299,6 +300,7 @@ export default function ReceiptList({ receipts, loading, onDelete }: Props) {
                               <label style={{ fontSize: 11, color: "#64748b", display: "block", marginBottom: 4 }}>備註 (人名)</label>
                               <input 
                                 type="text" 
+                                list="existing-notes"
                                 style={{ width: "100%", padding: "10px", borderRadius: 10, border: "1px solid #cbd5e1", fontSize: 14 }}
                                 value={editNote}
                                 onChange={(e) => setEditNote(e.target.value)}
@@ -370,6 +372,9 @@ export default function ReceiptList({ receipts, loading, onDelete }: Props) {
           ))
         )}
       </div>
+      <datalist id="existing-notes">
+        {existingNotes.map(n => <option key={n} value={n} />)}
+      </datalist>
     </div>
   );
 }

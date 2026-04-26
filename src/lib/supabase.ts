@@ -29,6 +29,8 @@ export interface Receipt {
   icon: string;
   items: ReceiptItem[];
   note: string | null;
+  trip_name: string;
+  is_archived: boolean;
 }
 
 export interface ReceiptInsert {
@@ -41,6 +43,8 @@ export interface ReceiptInsert {
   items: ReceiptItem[];
   created_at?: string;
   note?: string | null;
+  trip_name?: string;
+  is_archived?: boolean;
 }
 
 /* ── API Functions ── */
@@ -101,5 +105,16 @@ export async function updateReceipt(id: string, data: Partial<ReceiptInsert>): P
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.message || `更新失敗 (${res.status})`);
+  }
+}
+export async function archiveTrip(tripName: string): Promise<void> {
+  const res = await fetch(`${SUPABASE_URL}/receipts?trip_name=eq.${tripName}`, {
+    method: "PATCH",
+    headers,
+    body: JSON.stringify({ is_archived: true }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || `歸檔失敗 (${res.status})`);
   }
 }

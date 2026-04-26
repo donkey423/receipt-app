@@ -48,6 +48,18 @@ export default function App() {
   const [receipts, setReceipts] = useState<Receipt[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [currentTrip, setCurrentTrip] = useState<string>("本次行程");
+
+  // Load last used trip from local storage if available
+  useEffect(() => {
+    const last = localStorage.getItem("last_trip");
+    if (last) setCurrentTrip(last);
+  }, []);
+
+  const saveCurrentTrip = (name: string) => {
+    setCurrentTrip(name);
+    localStorage.setItem("last_trip", name);
+  };
   const loadReceipts = useCallback(async () => {
     setLoading(true);
     setError("");
@@ -71,6 +83,25 @@ export default function App() {
     });
     return Array.from(notes);
   }, [receipts]);
+
+  const allTripNames = useMemo(() => {
+    const trips = new Set<string>();
+    receipts.forEach(r => trips.add(r.trip_name || "本次行程"));
+    // Ensure currentTrip is in the list
+    trips.add(currentTrip);
+    return Array.from(trips).sort();
+  }, [receipts, currentTrip]);
+
+  const filteredReceipts = useMemo(() => {
+    return receipts.filter(r => (r.trip_name || "本次行程") === currentTrip);
+  }, [receipts, currentTrip]);
+
+  const handleCreateTrip = () => {
+    const name = prompt("請輸入新行程名稱（例如：2024 日本行）：");
+    if (name && name.trim()) {
+      saveCurrentTrip(name.trim());
+    }
+  };
 
   useEffect(() => {
     loadReceipts();
@@ -118,18 +149,49 @@ export default function App() {
         </div>
       )}
 
+      {/* Trip Selector Header */}
+      <header style={{
+        padding: "12px 16px",
+        background: "#fff",
+        borderBottom: "1px solid #e2e8f0",
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+        position: "sticky",
+        top: 0,
+        zIndex: 150
+      }}>
+        <div style={{ fontSize: 18 }}>🗺️</div>
+        <select 
+          style={{ 
+            flex: 1, padding: "6px 12px", borderRadius: 10, border: "1.5px solid #e2e8f0", 
+            background: "#f8fafc", fontSize: 14, fontWeight: 700 
+          }}
+          value={currentTrip}
+          onChange={(e) => saveCurrentTrip(e.target.value)}
+        >
+          {allTripNames.map(t => <option key={t} value={t}>{t}</option>)}
+        </select>
+        <button 
+          onClick={handleCreateTrip}
+          style={{ border: "none", background: "#f1f5f9", padding: "6px 12px", borderRadius: 10, fontSize: 12, fontWeight: 800, color: "#2563eb", cursor: "pointer" }}
+        >
+          + 新行程
+        </button>
+      </header>
+
       {/* Tab Content */}
       <div style={{ display: tab === "record" ? "block" : "none" }}>
-        <ReceiptRecorderCard onSaved={handleSaved} receiptCount={receipts.length} existingNotes={existingNotes} />
+        <ReceiptRecorderCard onSaved={handleSaved} receiptCount={filteredReceipts.length} existingNotes={existingNotes} currentTrip={currentTrip} />
       </div>
       <div style={{ display: tab === "list" ? "block" : "none" }}>
-        <ReceiptList receipts={receipts} loading={loading} onDelete={handleSaved} existingNotes={existingNotes} />
+        <ReceiptList receipts={filteredReceipts} loading={loading} onDelete={handleSaved} existingNotes={existingNotes} />
       </div>
       <div style={{ display: tab === "stats" ? "block" : "none" }}>
-        <ReceiptStats receipts={receipts} loading={loading} />
+        <ReceiptStats receipts={filteredReceipts} loading={loading} />
       </div>
       <div style={{ display: tab === "settlement" ? "block" : "none" }}>
-        <SettlementView receipts={receipts} loading={loading} />
+        <SettlementView receipts={filteredReceipts} fullReceipts={receipts} loading={loading} tripName={currentTrip} onRefresh={handleSaved} />
       </div>
 
       {/* Bottom Nav */}

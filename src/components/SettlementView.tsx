@@ -38,11 +38,15 @@ const s: Record<string, React.CSSProperties> = {
 
 interface Props {
   receipts: Receipt[];
+  fullReceipts: Receipt[];
   loading: boolean;
+  tripName: string;
+  onRefresh: () => void;
 }
 
-export default function SettlementView({ receipts, loading }: Props) {
+export default function SettlementView({ receipts, loading, tripName, onRefresh }: Props) {
   const [selectedPerson, setSelectedPerson] = useState<string>("我 (我自己)");
+  const [archiving, setArchiving] = useState(false);
 
   const allItems = useMemo(() => {
     const list: any[] = [];
@@ -84,6 +88,29 @@ export default function SettlementView({ receipts, loading }: Props) {
     return filteredItems.reduce((sum, i) => sum + i.itemTwd, 0);
   }, [filteredItems]);
 
+  const personTotals = useMemo(() => {
+    const map = new Map<string, number>();
+    allItems.forEach(i => {
+      map.set(i.effectiveNote, (map.get(i.effectiveNote) || 0) + i.itemTwd);
+    });
+    return Array.from(map.entries()).sort((a, b) => b[1] - a[1]);
+  }, [allItems]);
+
+  const handleArchive = async () => {
+    if (!confirm(`確定要結算並歸檔 「${tripName}」 嗎？\n歸檔後資料將從目前清單隱藏，但仍保存在資料庫中。`)) return;
+    setArchiving(true);
+    try {
+      const { archiveTrip } = await import("../lib/supabase");
+      await archiveTrip(tripName);
+      alert("歸檔成功！");
+      onRefresh();
+    } catch (err: any) {
+      alert(err.message || "歸檔失敗");
+    } finally {
+      setArchiving(false);
+    }
+  };
+
   if (loading) {
     return <div style={{ display: "flex", justifyContent: "center", padding: 50 }}><div className="spinner" /></div>;
   }
@@ -96,8 +123,23 @@ export default function SettlementView({ receipts, loading }: Props) {
       </div>
 
       <div style={s.card}>
+        <div style={{ fontSize: 16, fontWeight: 800, color: "#1e3a8a", marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
+          👥 所有人總覽
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {personTotals.map(([name, total]) => (
+            <div key={name} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 4px", borderBottom: "1px dotted #e2e8f0" }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: name === "我 (我自己)" ? "#2563eb" : "#475569" }}>{name}</div>
+              <div style={{ fontSize: 15, fontWeight: 800, color: "#1e293b" }}>NT$ {total.toLocaleString()}</div>
+            </div>
+          ))}
+          {personTotals.length === 0 && <div style={s.empty}>暫無資料</div>}
+        </div>
+      </div>
+
+      <div style={s.card}>
         <div style={s.selectBox}>
-          <label style={s.label}>選擇對象：</label>
+          <label style={s.label}>🔍 查看明細：</label>
           <select 
             style={{ 
               width: "100%", padding: "12px 16px", borderRadius: 14, 
@@ -144,8 +186,21 @@ export default function SettlementView({ receipts, loading }: Props) {
         </div>
       </div>
 
-      <div style={{ textAlign: "center", color: "#94a3b8", fontSize: 12, paddingBottom: 20 }}>
-        截圖此畫面即可傳給對方對帳 🚀
+      <div style={{ padding: "0 8px 30px" }}>
+        <button
+          onClick={handleArchive}
+          disabled={archiving || receipts.length === 0}
+          style={{
+            width: "100%", padding: "14px", borderRadius: 16, border: "none",
+            background: "#f1f5f9", color: "#64748b", fontSize: 14, fontWeight: 700,
+            cursor: "pointer", transition: "all 0.2s"
+          }}
+        >
+          {archiving ? "歸檔中..." : `🏁 結算並歸檔 「${tripName}」`}
+        </button>
+        <div style={{ textAlign: "center", color: "#94a3b8", fontSize: 11, marginTop: 12 }}>
+          提示：歸檔後資料不會刪除，可隨時在「行程」切換查看 🚀
+        </div>
       </div>
     </div>
   );

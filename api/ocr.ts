@@ -58,7 +58,6 @@ ${targetCurrency ? `幣別：${targetCurrency}` : ""}
     let text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
     if (!text) return res.status(500).json({ error: `AI 回應為空 (${data.candidates?.[0]?.finishReason})` });
 
-    // 由於我們啟用了 responseMimeType: "application/json"，回傳的 text 會是純 JSON 字串
     try {
       const receipt = JSON.parse(text);
       return res.status(200).json(receipt);

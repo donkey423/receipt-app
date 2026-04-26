@@ -61,7 +61,6 @@ const DESTINATIONS = [
 ];
 
 /* ── Image Resize ── */
-// Optimized for speed & accuracy (800px is excellent for Gemini 1.5 Flash OCR)
 function resizeImage(file: File, maxDim = 800): Promise<{ base64: string; mediaType: string; previewUrl: string }> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -77,7 +76,6 @@ function resizeImage(file: File, maxDim = 800): Promise<{ base64: string; mediaT
         canvas.width = w;
         canvas.height = h;
         canvas.getContext("2d")!.drawImage(img, 0, 0, w, h);
-        // Reduced to 0.6 for even faster processing
         const dataUrl = canvas.toDataURL("image/jpeg", 0.6);
         resolve({ base64: dataUrl.split(",")[1], mediaType: "image/jpeg", previewUrl: dataUrl });
       };
@@ -160,19 +158,16 @@ export default function ReceiptRecorderCard({ onSaved, receiptCount, existingNot
     note: ""
   });
 
-  // Multi-image states
   const [images, setImages] = useState<ImageFile[]>([]);
   const [results, setResults] = useState<OcrResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState({ done: 0, total: 0 });
 
-  // Manual mode states
   const [manualReceipt, setManualReceipt] = useState<ReceiptData | null>(null);
   const [manualSaving, setManualSaving] = useState(false);
   const [manualSaved, setManualSaved] = useState(false);
   const [error, setError] = useState("");
 
-  // Quota states (1500 per day for Gemini Flash Free)
   const [quota, setQuota] = useState(() => {
     const today = new Date().toDateString();
     const saved = localStorage.getItem("gemini_quota");
@@ -199,11 +194,9 @@ export default function ReceiptRecorderCard({ onSaved, receiptCount, existingNot
     
     setIsRateLoading(true);
     try {
-      // 使用 open.er-api.com (無須 key)
       const res = await fetch(`https://open.er-api.com/v6/latest/TWD`);
       const data = await res.json();
       if (data.result === "success" && data.rates[dest.currency]) {
-        // 1 TWD = N Foreign -> 1 Foreign = 1/N TWD
         const rate = parseFloat((1 / data.rates[dest.currency]).toFixed(4));
         setExchangeRate(rate);
         localStorage.setItem(`rate_${dest.currency}`, rate.toString());
@@ -244,7 +237,7 @@ export default function ReceiptRecorderCard({ onSaved, receiptCount, existingNot
           receipt: { ...data, icon: "🧾", category: "其他" },
           error: "", saving: false, saved: false,
         };
-        setResults(prev => [newRes, ...prev]); // Add to top of list
+        setResults(prev => [newRes, ...prev]);
         success = true;
       } catch (err: any) {
         lastErr = err.message || "未知錯誤";
@@ -306,14 +299,6 @@ export default function ReceiptRecorderCard({ onSaved, receiptCount, existingNot
     }
   };
 
-  const handleSaveAll = async () => {
-    const unsaved = results.filter((r, i) => r.receipt && !r.saved).map((_, i) => i);
-    for (const idx of unsaved) {
-      const realIdx = results.findIndex((r, i) => r.receipt && !r.saved && i >= idx);
-      if (realIdx >= 0) await handleSaveOne(realIdx);
-    }
-  };
-
   const handleManualSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const amount = Number(manualForm.amount);
@@ -339,7 +324,6 @@ export default function ReceiptRecorderCard({ onSaved, receiptCount, existingNot
       
       setManualSaved(true);
       onSaved?.();
-      // Reset form after 1.5s
       setTimeout(() => {
         handleReset();
       }, 1500);
@@ -355,7 +339,6 @@ export default function ReceiptRecorderCard({ onSaved, receiptCount, existingNot
       if (i !== index || !r.receipt) return r;
       const newReceipt = { ...r.receipt, ...updates };
       
-      // If items changed, recalculate total_amount
       if (updates.items) {
         newReceipt.total_amount = updates.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
       }
@@ -368,31 +351,6 @@ export default function ReceiptRecorderCard({ onSaved, receiptCount, existingNot
         }
       };
     }));
-  };
-
-  const handleManualSave = async () => {
-    if (!manualReceipt) return;
-    setManualSaving(true); setError("");
-    try {
-      const twdAmount = manualReceipt.currency === "TWD"
-        ? manualReceipt.total_amount
-        : Math.round(manualReceipt.total_amount * exchangeRate);
-      await createReceipt({
-        currency: manualReceipt.currency, total_amount: manualReceipt.total_amount,
-        twd_amount: twdAmount,
-        exchange_rate: manualReceipt.currency !== "TWD" ? exchangeRate : null,
-        category: manualReceipt.category, icon: manualReceipt.icon,
-        items: manualReceipt.items,
-        created_at: new Date(manualForm.date).toISOString(),
-        note: manualReceipt.note || null,
-      });
-      setManualSaved(true);
-      onSaved?.();
-    } catch (err: any) {
-      setError(err.message || "儲存失敗");
-    } finally {
-      setManualSaving(false);
-    }
   };
 
   const handleReset = () => {
@@ -410,11 +368,9 @@ export default function ReceiptRecorderCard({ onSaved, receiptCount, existingNot
   return (
     <div style={s.page}>
       <div style={s.wrap}>
-        {/* Header */}
         <div style={s.header}>
           <div style={s.headerTitle}>📱 收據記錄</div>
 
-          {/* Destination Dropdown */}
           <div style={{ marginTop: 12, display: "flex", justifyContent: "center" }}>
             <div style={{ position: "relative", width: "100%", maxWidth: 280 }}>
               <label style={{ ...s.label, textAlign: "center" }}>🌍 選擇旅遊目的地</label>
@@ -481,7 +437,6 @@ export default function ReceiptRecorderCard({ onSaved, receiptCount, existingNot
           </div>
         </div>
 
-        {/* Tab */}
         <div style={s.card}>
           <div style={s.tabWrap}>
             <button style={inputMode === "camera" ? s.tabActive : s.tabInactive}
@@ -495,7 +450,6 @@ export default function ReceiptRecorderCard({ onSaved, receiptCount, existingNot
           </div>
         </div>
 
-        {/* Input Panel */}
         <div style={s.card}>
           {inputMode === "camera" ? (
             <div style={{ padding: "10px 0" }}>
@@ -533,7 +487,6 @@ export default function ReceiptRecorderCard({ onSaved, receiptCount, existingNot
                   style={s.input} value={manualForm.amount}
                   onChange={(e) => setManualForm((p) => ({ ...p, amount: e.target.value }))} />
               </div>
-
               <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                 <div>
                   <label style={s.label}>消費日期</label>
@@ -561,7 +514,6 @@ export default function ReceiptRecorderCard({ onSaved, receiptCount, existingNot
           )}
         </div>
 
-        {/* Error */}
         {error && (
           <div style={{
             ...s.card, background: "#fef2f2", border: "1px solid #fecaca",
@@ -572,10 +524,8 @@ export default function ReceiptRecorderCard({ onSaved, receiptCount, existingNot
           </div>
         )}
 
-        {/* OCR Results */}
         {results.length > 0 && (
           <>
-            {/* Summary + Save All */}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 4px" }}>
               <span style={{ fontSize: 13, color: "#64748b", fontWeight: 600 }}>
                 辨識結果：{successCount}/{results.length} 成功
@@ -595,8 +545,6 @@ export default function ReceiptRecorderCard({ onSaved, receiptCount, existingNot
                     <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 8 }}>
                       <div style={{ display: "flex", gap: 8, flexDirection: "column" }}>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-
-                          
                           <input
                             type="date"
                             style={{ ...s.input, padding: "6px 10px", fontSize: 13, width: "auto", borderRadius: 10, color: "#64748b", border: "1px solid #e2e8f0" }}
@@ -653,7 +601,6 @@ export default function ReceiptRecorderCard({ onSaved, receiptCount, existingNot
                         )}
                       </div>
 
-                      {/* Items List (Editable) */}
                       <div style={{ background: "#f8fafc", borderRadius: 12, padding: 8, display: "flex", flexDirection: "column", gap: 6 }}>
                         {r.receipt.items.map((item, idx) => (
                           <div key={idx} style={{ display: "flex", flexDirection: "column", gap: 2, paddingBottom: 4, borderBottom: idx < r.receipt!.items.length - 1 ? "1px solid #e2e8f0" : "none" }}>
@@ -771,60 +718,6 @@ export default function ReceiptRecorderCard({ onSaved, receiptCount, existingNot
               🔄 重新開始
             </button>
           </>
-        )}
-
-        {/* Manual Receipt Result */}
-        {manualReceipt && (
-          <div style={{
-            ...s.card, padding: 20, display: "flex", flexDirection: "column", gap: 14,
-            animation: "fadeSlideUp 0.35s ease-out",
-          }}>
-            <div style={{ textAlign: "center" }}>
-              <div style={{ fontSize: 56, lineHeight: 1 }}>{manualReceipt.icon}</div>
-              <div style={{ marginTop: 8, fontSize: 20, fontWeight: 700 }}>{manualReceipt.category}</div>
-            </div>
-            <div style={{ background: "#f8fafc", borderRadius: 16, padding: 16, textAlign: "center" }}>
-              {manualReceipt.currency !== "TWD" ? (
-                <>
-                  <div style={{ fontSize: 30, fontWeight: 900, color: "#ef4444" }}>
-                    NT$ {convertTwd(manualReceipt)?.toLocaleString()}
-                  </div>
-                  <div style={{ marginTop: 6, fontSize: 13, color: "#94a3b8" }}>
-                    {currencySymbols[manualReceipt.currency] || ""}{manualReceipt.total_amount.toLocaleString()} {manualReceipt.currency}
-                  </div>
-                  <div style={{ marginTop: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-                    <span style={{ fontSize: 13, color: "#64748b" }}>匯率</span>
-                    <input type="number" step="0.001" value={exchangeRate}
-                      onChange={(e) => setExchangeRate(Number(e.target.value) || 0)}
-                      style={{
-                        width: 88, borderRadius: 12, border: "1.5px solid #e2e8f0", background: "#fff",
-                        padding: "6px 10px", textAlign: "center", fontSize: 14, outline: "none", fontFamily: "inherit",
-                      }} />
-                  </div>
-                </>
-              ) : (
-                <div style={{ fontSize: 30, fontWeight: 900, color: "#ef4444" }}>
-                  NT$ {manualReceipt.total_amount.toLocaleString()}
-                </div>
-              )}
-            </div>
-            <div style={{ display: "flex", gap: 10 }}>
-              <button style={{ ...s.btn, flex: 1, background: "#f1f5f9", color: "#475569" }} onClick={handleReset}>
-                🔄 重新
-              </button>
-              <button
-                style={{
-                  ...s.btn, flex: 2,
-                  background: manualSaved ? "linear-gradient(135deg, #059669, #10b981)" : "linear-gradient(135deg, #2563eb, #3b82f6)",
-                  color: "#fff", pointerEvents: manualSaved || manualSaving ? "none" : "auto",
-                  opacity: manualSaving ? 0.7 : 1,
-                }}
-                onClick={handleManualSave} disabled={manualSaved || manualSaving}
-              >
-                {manualSaving ? "儲存中..." : manualSaved ? "✅ 已儲存" : "💾 儲存"}
-              </button>
-            </div>
-          </div>
         )}
       </div>
       <datalist id="existing-notes">

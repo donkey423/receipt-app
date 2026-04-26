@@ -59,7 +59,6 @@ export default function SettlementView({ receipts, loading }: Props) {
           date: r.created_at,
           effectiveNote,
           itemTwd,
-
           currency: r.currency
         });
       });

@@ -86,9 +86,10 @@ interface Props {
   loading: boolean;
   mutate: (data?: any, shouldRevalidate?: boolean) => Promise<any>;
   existingNotes: string[];
+  tripName: string;
 }
 
-export default function ReceiptList({ receipts, loading, mutate, existingNotes }: Props) {
+export default function ReceiptList({ receipts, loading, mutate, existingNotes, tripName }: Props) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [deletingAll, setDeletingAll] = useState(false);
@@ -107,9 +108,16 @@ export default function ReceiptList({ receipts, loading, mutate, existingNotes }
 
   const handleUpdate = async (id: string) => {
     setUpdating(true);
+    const original = receipts.find(r => r.id === id);
     // Optimistic UI
     const updatedReceipts = receipts.map(r => 
-      r.id === id ? { ...r, twd_amount: editAmount, note: editNote || null, items: editItems } : r
+      r.id === id ? {
+        ...r,
+        twd_amount: editAmount,
+        total_amount: r.currency === "TWD" ? editAmount : r.total_amount,
+        note: editNote || null,
+        items: editItems,
+      } : r
     );
     mutate(updatedReceipts, false);
     
@@ -117,6 +125,7 @@ export default function ReceiptList({ receipts, loading, mutate, existingNotes }
       const { updateReceipt } = await import("../lib/supabase");
       await updateReceipt(id, { 
         twd_amount: editAmount, 
+        ...(original?.currency === "TWD" ? { total_amount: editAmount } : {}),
         note: editNote || null,
         items: editItems
       });
@@ -158,7 +167,7 @@ export default function ReceiptList({ receipts, loading, mutate, existingNotes }
 
     try {
       const { deleteAllReceipts } = await import("../lib/supabase");
-      await deleteAllReceipts();
+      await deleteAllReceipts(tripName);
       mutate();
     } catch (err: any) {
       alert(err.message || "全部刪除失敗");

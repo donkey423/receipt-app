@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import useSWR from "swr";
-import { fetchReceipts, type Receipt } from "./lib/supabase";
+import { DEFAULT_TRIP_NAME, fetchReceipts, type Receipt } from "./lib/supabase";
 import ReceiptRecorderCard from "./components/ReceiptRecorderCard";
 import ReceiptList from "./components/ReceiptList";
 import SettlementView from "./components/SettlementView";
@@ -44,8 +44,20 @@ const navStyle: Record<string, React.CSSProperties> = {
 
 export default function App() {
   const [tab, setTab] = useState<Tab>("record");
+  const [tripName, setTripNameState] = useState(() => {
+    return localStorage.getItem("active_trip_name") || DEFAULT_TRIP_NAME;
+  });
+
+  const setTripName = (next: string) => {
+    setTripNameState(next);
+    localStorage.setItem("active_trip_name", next);
+  };
+  const activeTripName = tripName.trim() || DEFAULT_TRIP_NAME;
   
-  const { data: receipts = [], mutate, isLoading: loading, error: fetchError } = useSWR<Receipt[]>('receipts', fetchReceipts);
+  const { data: receipts = [], mutate, isLoading: loading, error: fetchError } = useSWR<Receipt[]>(
+    ["receipts", activeTripName],
+    () => fetchReceipts(activeTripName)
+  );
   const error = fetchError ? fetchError.message : "";
 
   const existingNotes = useMemo(() => {
@@ -99,10 +111,16 @@ export default function App() {
 
       {/* Tab Content */}
       <div style={{ display: tab === "record" ? "block" : "none" }}>
-        <ReceiptRecorderCard mutate={mutate} receiptCount={receipts.length} existingNotes={existingNotes} />
+        <ReceiptRecorderCard
+          mutate={mutate}
+          receiptCount={receipts.length}
+          existingNotes={existingNotes}
+          tripName={tripName}
+          onTripNameChange={setTripName}
+        />
       </div>
       <div style={{ display: tab === "list" ? "block" : "none" }}>
-        <ReceiptList receipts={receipts} loading={loading} mutate={mutate} existingNotes={existingNotes} />
+        <ReceiptList receipts={receipts} loading={loading} mutate={mutate} existingNotes={existingNotes} tripName={activeTripName} />
       </div>
       <div style={{ display: tab === "settlement" ? "block" : "none" }}>
         <SettlementView receipts={receipts} loading={loading} />

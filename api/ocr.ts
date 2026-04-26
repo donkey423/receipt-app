@@ -2,31 +2,58 @@ export const config = {
   runtime: 'edge',
 };
 
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type",
+};
+
+const allowedMediaTypes = new Set(["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"]);
+
+function json(data: unknown, status = 200, headers: Record<string, string> = {}) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: {
+      ...corsHeaders,
+      "Content-Type": "application/json",
+      ...headers,
+    },
+  });
+}
+
 export default async function handler(req: Request) {
   if (req.method === "OPTIONS") {
     return new Response(null, {
       status: 200,
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "POST, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type",
-      }
+      headers: corsHeaders
     });
   }
 
   if (req.method !== "POST") {
-    return new Response(JSON.stringify({ error: "Method not allowed" }), { status: 405 });
+    return json({ error: "Method not allowed" }, 405, { Allow: "POST, OPTIONS" });
   }
 
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    return new Response(JSON.stringify({ error: "GEMINI_API_KEY 未設定" }), { status: 500 });
+    return json({ error: "GEMINI_API_KEY 未設定" }, 500);
   }
 
   try {
-    const { image, mediaType, targetCurrency } = await req.json();
+    let body: any;
+    try {
+      body = await req.json();
+    } catch {
+      return json({ error: "請提供有效 JSON" }, 400);
+    }
+
+    const { image, mediaType, targetCurrency } = body;
     if (!image) {
-      return new Response(JSON.stringify({ error: "未提供圖片" }), { status: 400 });
+      return json({ error: "未提供圖片" }, 400);
+    }
+
+    const mimeType = mediaType || "image/webp";
+    if (!allowedMediaTypes.has(mimeType)) {
+      return json({ error: `不支援的圖片格式：${mimeType}` }, 415);
     }
 
     const prompt = `收據辨識：
@@ -52,7 +79,7 @@ ${targetCurrency ? `幣別：${targetCurrency}` : ""}
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          contents: [{ parts: [{ inline_data: { mime_type: mediaType || "image/webp", data: image } }, { text: prompt }] }],
+          contents: [{ parts: [{ inline_data: { mime_type: mimeType, data: image } }, { text: prompt }] }],
           generationConfig: { temperature: 0.1, maxOutputTokens: 4096, responseMimeType: "application/json" },
           safetySettings: [
             { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
@@ -66,40 +93,22 @@ ${targetCurrency ? `幣別：${targetCurrency}` : ""}
 
     const data = await response.json();
     if (!response.ok) {
-        return new Response(JSON.stringify({ error: data.error?.message || "API 錯誤" }), { 
-            status: response.status,
-            headers: { "Access-Control-Allow-Origin": "*", "Content-Type": "application/json" }
-        });
+        return json({ error: data.error?.message || "API 錯誤" }, response.status);
     }
 
     let text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
     if (!text) {
-        return new Response(JSON.stringify({ error: `AI 回應為空 (${data.candidates?.[0]?.finishReason})` }), { 
-            status: 500,
-            headers: { "Access-Control-Allow-Origin": "*", "Content-Type": "application/json" }
-        });
+        return json({ error: `AI 回應為空 (${data.candidates?.[0]?.finishReason})` }, 500);
     }
 
     try {
       const receipt = JSON.parse(text);
-      return new Response(JSON.stringify(receipt), { 
-        status: 200,
-        headers: {
-            "Access-Control-Allow-Origin": "*",
-            "Content-Type": "application/json",
-        }
-      });
+      return json(receipt);
     } catch (e) {
-      return new Response(JSON.stringify({ error: "解析 JSON 失敗", raw: text.substring(0, 100) }), { 
-          status: 500,
-          headers: { "Access-Control-Allow-Origin": "*", "Content-Type": "application/json" }
-      });
+      return json({ error: "解析 JSON 失敗", raw: text.substring(0, 100) }, 500);
     }
   } catch (error: any) {
     console.error("OCR handler error:", error);
-    return new Response(JSON.stringify({ error: error.message || "伺服器錯誤" }), { 
-        status: 500,
-        headers: { "Access-Control-Allow-Origin": "*", "Content-Type": "application/json" }
-    });
+    return json({ error: error.message || "伺服器錯誤" }, 500);
   }
 }

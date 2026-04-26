@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { type Receipt } from "../lib/supabase";
+import { receiptSettlementItems } from "../lib/receiptLogic";
 
 const s: Record<string, React.CSSProperties> = {
   container: { padding: 16, display: "flex", flexDirection: "column", gap: 16, animation: "fadeSlideUp 0.4s ease-out" },
@@ -45,25 +46,7 @@ export default function SettlementView({ receipts, loading }: Props) {
   const [selectedPerson, setSelectedPerson] = useState<string>("我 (我自己)");
 
   const allItems = useMemo(() => {
-    const list: any[] = [];
-    receipts.forEach(r => {
-      r.items?.forEach(item => {
-        const effectiveNote = item.note || r.note || "我 (我自己)";
-        const itemTwd = r.currency === "TWD" 
-          ? (item.price * item.quantity)
-          : Math.round(item.price * item.quantity * (r.exchange_rate || 1));
-        
-        list.push({
-          ...item,
-          receiptId: r.id,
-          date: r.created_at,
-          effectiveNote,
-          itemTwd,
-          currency: r.currency
-        });
-      });
-    });
-    return list;
+    return receipts.flatMap(receiptSettlementItems);
   }, [receipts]);
 
   const people = useMemo(() => {

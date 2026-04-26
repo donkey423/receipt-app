@@ -1,17 +1,8 @@
 import { ChangeEvent, FormEvent, useState, useEffect } from "react";
-import { createReceipt, fetchReceipts, ReceiptItem } from "../lib/supabase";
+import { createReceipt } from "../lib/supabase";
+import { normalizeReceipt, todayISODate, type ReceiptData } from "../lib/receiptLogic";
 
 /* ── Types ── */
-interface ReceiptData {
-  currency: string;
-  total_amount: number;
-  category?: string;
-  date?: string;
-  icon?: string;
-  items: ReceiptItem[];
-  note?: string;
-}
-
 interface ImageFile {
   file: File;
   previewUrl: string;
@@ -23,6 +14,7 @@ interface OcrResult {
   image: ImageFile;
   receipt: ReceiptData | null;
   error: string;
+  warning?: string;
   saving: boolean;
   saved: boolean;
 }
@@ -76,8 +68,12 @@ function resizeImage(file: File, maxDim = 800): Promise<{ base64: string; mediaT
         canvas.width = w;
         canvas.height = h;
         canvas.getContext("2d")!.drawImage(img, 0, 0, w, h);
-        const dataUrl = canvas.toDataURL("image/webp", 0.7);
-        resolve({ base64: dataUrl.split(",")[1], mediaType: "image/webp", previewUrl: dataUrl });
+        const webpUrl = canvas.toDataURL("image/webp", 0.7);
+        const dataUrl = webpUrl.startsWith("data:image/webp")
+          ? webpUrl
+          : canvas.toDataURL("image/jpeg", 0.7);
+        const mediaType = dataUrl.slice(5, dataUrl.indexOf(";"));
+        resolve({ base64: dataUrl.split(",")[1], mediaType, previewUrl: dataUrl });
       };
       img.onerror = () => reject(new Error("圖片載入失敗"));
       img.src = e.target?.result as string;
@@ -144,17 +140,19 @@ interface Props {
   mutate: (data?: any, shouldRevalidate?: boolean) => Promise<any>;
   receiptCount?: number;
   existingNotes: string[];
+  tripName: string;
+  onTripNameChange: (tripName: string) => void;
 }
 
 /* ── Component ── */
-export default function ReceiptRecorderCard({ mutate, receiptCount, existingNotes }: Props) {
+export default function ReceiptRecorderCard({ mutate, receiptCount, existingNotes, tripName, onTripNameChange }: Props) {
   const [inputMode, setInputMode] = useState<InputMode>("camera");
   const [destinationId, setDestinationId] = useState("jp");
   const [exchangeRate, setExchangeRate] = useState(0.22);
   const [isRateLoading, setIsRateLoading] = useState(false);
   const [manualForm, setManualForm] = useState<ManualFormState>({ 
     amount: "", 
-    date: new Date().toISOString().split("T")[0],
+    date: todayISODate(),
     note: ""
   });
 
@@ -231,11 +229,12 @@ export default function ReceiptRecorderCard({ mutate, receiptCount, existingNote
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || `辨識失敗 (${res.status})`);
+        const normalized = normalizeReceipt(data, dest?.currency || "TWD");
         
         const newRes: OcrResult = {
           image: img,
-          receipt: { ...data, icon: "🧾", category: "其他" },
-          error: "", saving: false, saved: false,
+          receipt: { ...normalized.receipt, icon: "🧾", category: "其他" },
+          error: "", warning: normalized.warning, saving: false, saved: false,
         };
         setResults(prev => [newRes, ...prev]);
         success = true;
@@ -291,6 +290,7 @@ export default function ReceiptRecorderCard({ mutate, receiptCount, existingNote
         items: receipt.items,
         created_at: receipt.date ? new Date(receipt.date).toISOString() : undefined,
         note: receipt.note || null,
+        trip_name: tripName,
       });
       setResults(prev => prev.map((p, i) => i === index ? { ...p, saving: false, saved: true } : p));
       mutate();
@@ -320,6 +320,7 @@ export default function ReceiptRecorderCard({ mutate, receiptCount, existingNote
         items: [{ name: "手動記帳", price: amount, quantity: 1 }],
         created_at: new Date(manualForm.date).toISOString(),
         note: manualForm.note || null,
+        trip_name: tripName,
       });
       
       setManualSaved(true);
@@ -356,7 +357,7 @@ export default function ReceiptRecorderCard({ mutate, receiptCount, existingNote
   const handleReset = () => {
     setImages([]); setResults([]); setError("");
     setManualReceipt(null); setManualSaved(false);
-    setManualForm({ amount: "", date: new Date().toISOString().split("T")[0], note: "" });
+    setManualForm({ amount: "", date: todayISODate(), note: "" });
   };
 
   const successCount = results.filter(r => r.receipt && !r.error).length;
@@ -370,6 +371,18 @@ export default function ReceiptRecorderCard({ mutate, receiptCount, existingNote
       <div style={s.wrap}>
         <div style={s.header}>
           <div style={s.headerTitle}>📱 收據記錄</div>
+
+          <div style={{ marginTop: 12 }}>
+            <label style={{ ...s.label, textAlign: "center" }}>🧳 旅程名稱</label>
+            <input
+              type="text"
+              value={tripName}
+              onChange={(e) => onTripNameChange(e.target.value)}
+              onBlur={(e) => onTripNameChange(e.target.value.trim() || "預設旅程")}
+              style={{ ...s.input, textAlign: "center", background: "#fff" }}
+              placeholder="例如：日本關西 2026"
+            />
+          </div>
 
           <div style={{ marginTop: 12, display: "flex", justifyContent: "center" }}>
             <div style={{ position: "relative", width: "100%", maxWidth: 280 }}>
@@ -563,6 +576,12 @@ export default function ReceiptRecorderCard({ mutate, receiptCount, existingNote
                             onChange={(e) => handleResultEdit(i, { note: e.target.value })}
                           />
                         </div>
+
+                        {r.warning && (
+                          <div style={{ background: "#fffbeb", color: "#92400e", border: "1px solid #fde68a", borderRadius: 10, padding: "8px 10px", fontSize: 12, fontWeight: 600 }}>
+                            ⚠️ {r.warning}
+                          </div>
+                        )}
 
                         <div style={{ background: "#fef2f2", borderRadius: 12, padding: "10px 14px", display: "flex", flexDirection: "column", gap: 4 }}>
                           <div style={{ fontSize: 12, fontWeight: 700, color: "#ef4444", opacity: 0.8 }}>總額 (TWD)</div>

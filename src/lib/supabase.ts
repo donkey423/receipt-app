@@ -2,6 +2,7 @@
 
 const SUPABASE_URL = "https://xpwucjblikcyvxjilkna.supabase.co/rest/v1";
 const SUPABASE_KEY = "sb_publishable_zelt3y4wwzk4mFCKD9fQWw_qeMHzSIz";
+export const DEFAULT_TRIP_NAME = "預設旅程";
 
 const headers: Record<string, string> = {
   apikey: SUPABASE_KEY,
@@ -49,9 +50,13 @@ export interface ReceiptInsert {
 
 /* ── API Functions ── */
 
-export async function fetchReceipts(): Promise<Receipt[]> {
+function tripFilter(tripName: string): string {
+  return `trip_name=eq.${encodeURIComponent(tripName || DEFAULT_TRIP_NAME)}`;
+}
+
+export async function fetchReceipts(tripName = DEFAULT_TRIP_NAME): Promise<Receipt[]> {
   const res = await fetch(
-    `${SUPABASE_URL}/receipts?order=created_at.desc&select=*`,
+    `${SUPABASE_URL}/receipts?${tripFilter(tripName)}&order=created_at.desc&select=*`,
     { headers }
   );
   if (!res.ok) {
@@ -65,7 +70,7 @@ export async function createReceipt(data: ReceiptInsert): Promise<Receipt[]> {
   const res = await fetch(`${SUPABASE_URL}/receipts`, {
     method: "POST",
     headers,
-    body: JSON.stringify(data),
+    body: JSON.stringify({ ...data, trip_name: data.trip_name || DEFAULT_TRIP_NAME }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
@@ -85,8 +90,8 @@ export async function deleteReceipt(id: string): Promise<void> {
   }
 }
 
-export async function deleteAllReceipts(): Promise<void> {
-  const res = await fetch(`${SUPABASE_URL}/receipts?id=not.is.null`, {
+export async function deleteAllReceipts(tripName = DEFAULT_TRIP_NAME): Promise<void> {
+  const res = await fetch(`${SUPABASE_URL}/receipts?${tripFilter(tripName)}`, {
     method: "DELETE",
     headers,
   });

@@ -651,6 +651,16 @@ export default function ReceiptRecorderCard({ onSaved, receiptCount }: Props) {
                         {r.receipt.items.map((item, idx) => (
                           <div key={idx} style={{ display: "flex", flexDirection: "column", gap: 2, paddingBottom: 4, borderBottom: idx < r.receipt!.items.length - 1 ? "1px solid #e2e8f0" : "none" }}>
                             <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                              <button
+                                style={{ border: "none", background: "none", cursor: "pointer", padding: "4px", color: "#94a3b8", fontSize: 14 }}
+                                onClick={() => {
+                                  const newItems = r.receipt!.items.filter((_, i) => i !== idx);
+                                  handleResultEdit(i, { items: newItems });
+                                }}
+                                title="移除品項"
+                              >
+                                ✕
+                              </button>
                               <input
                                 type="text"
                                 style={{ ...s.input, padding: "2px 6px", fontSize: 12, flex: 2 }}
@@ -703,18 +713,34 @@ export default function ReceiptRecorderCard({ onSaved, receiptCount }: Props) {
                   )}
 
                   {r.receipt && (
-                    <button
-                      onClick={() => handleSaveOne(i)}
-                      disabled={r.saved || r.saving}
-                      style={{
-                        border: "none", borderRadius: 12, padding: "8px 14px", fontSize: 13,
-                        fontWeight: 600, cursor: "pointer", flexShrink: 0,
-                        background: r.saved ? "#dcfce7" : r.saving ? "#e2e8f0" : "#2563eb",
-                        color: r.saved ? "#16a34a" : r.saving ? "#94a3b8" : "#fff",
-                      }}
-                    >
-                      {r.saving ? "..." : r.saved ? "✅" : "💾"}
-                    </button>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                      <button
+                        onClick={() => handleSaveOne(i)}
+                        disabled={r.saved || r.saving}
+                        style={{
+                          border: "none", borderRadius: 12, padding: "8px 14px", fontSize: 13,
+                          fontWeight: 600, cursor: "pointer", flexShrink: 0,
+                          background: r.saved ? "#dcfce7" : r.saving ? "#e2e8f0" : "#2563eb",
+                          color: r.saved ? "#16a34a" : r.saving ? "#94a3b8" : "#fff",
+                        }}
+                      >
+                        {r.saving ? "..." : r.saved ? "✅" : "💾"}
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (confirm("要移除這張辨識結果嗎？")) {
+                            setResults(prev => prev.filter((_, idx) => idx !== i));
+                          }
+                        }}
+                        style={{
+                          border: "none", borderRadius: 12, padding: "8px 14px", fontSize: 14,
+                          cursor: "pointer", background: "#fee2e2", color: "#dc2626",
+                        }}
+                        title="移除此張"
+                      >
+                        🗑️
+                      </button>
+                    </div>
                   )}
                 </div>
               </div>

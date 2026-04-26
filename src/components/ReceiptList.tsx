@@ -198,8 +198,17 @@ export default function ReceiptList({ receipts, loading, onDelete }: Props) {
                           </div>
                         )}
                       </div>
-                      <div style={{ fontSize: 12, color: "#cbd5e1", flexShrink: 0 }}>
-                        {isExpanded ? "▲" : "▼"}
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleDelete(r.id); }}
+                          style={{ border: "none", background: "none", cursor: "pointer", fontSize: 16, padding: "4px" }}
+                          title="刪除"
+                        >
+                          🗑️
+                        </button>
+                        <div style={{ fontSize: 12, color: "#cbd5e1" }}>
+                          {isExpanded ? "▲" : "▼"}
+                        </div>
                       </div>
                     </div>
 

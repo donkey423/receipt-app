@@ -267,6 +267,26 @@ export default function ReceiptRecorderCard({ onSaved, receiptCount }: Props) {
     setManualSaved(false);
   };
 
+  const handleResultEdit = (index: number, updates: Partial<ReceiptData>) => {
+    setResults(prev => prev.map((r, i) => {
+      if (i !== index || !r.receipt) return r;
+      const newReceipt = { ...r.receipt, ...updates };
+      
+      // If items changed, recalculate total_amount
+      if (updates.items) {
+        newReceipt.total_amount = updates.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+      }
+
+      return {
+        ...r,
+        receipt: {
+          ...newReceipt,
+          icon: categoryIconMap[newReceipt.category] || "🧾"
+        }
+      };
+    }));
+  };
+
   const handleManualSave = async () => {
     if (!manualReceipt) return;
     setManualSaving(true); setError("");
@@ -453,23 +473,69 @@ export default function ReceiptRecorderCard({ onSaved, receiptCount }: Props) {
                     width: 52, height: 52, objectFit: "cover", borderRadius: 12, flexShrink: 0,
                   }} />
                   {r.receipt ? (
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        <span style={{ fontSize: 22 }}>{r.receipt.icon}</span>
-                        <span style={{ fontSize: 15, fontWeight: 700 }}>{r.receipt.category}</span>
-                      </div>
-                      <div style={{ fontSize: 18, fontWeight: 800, color: "#ef4444", marginTop: 2 }}>
-                        {r.receipt.currency === "TWD"
-                          ? `NT$ ${r.receipt.total_amount.toLocaleString()}`
-                          : `NT$ ${convertTwd(r.receipt)?.toLocaleString()}`}
-                      </div>
-                      {r.receipt.currency !== "TWD" && (
-                        <div style={{ fontSize: 11, color: "#94a3b8" }}>
-                          {currencySymbols[r.receipt.currency] || ""}{r.receipt.total_amount.toLocaleString()} {r.receipt.currency}
+                    <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 8 }}>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <select
+                          style={{ ...s.input, padding: "4px 8px", fontSize: 13, width: "auto" }}
+                          value={r.receipt.category}
+                          onChange={(e) => handleResultEdit(i, { category: e.target.value })}
+                        >
+                          {Object.keys(categoryIconMap).map(c => <option key={c} value={c}>{c}</option>)}
+                        </select>
+                        <div style={{ display: "flex", alignItems: "center", gap: 4, flex: 1 }}>
+                          <span style={{ fontSize: 13, fontWeight: 600 }}>{currencySymbols[r.receipt.currency] || "$"}</span>
+                          <input
+                            type="number"
+                            style={{ ...s.input, padding: "4px 8px", fontSize: 14, fontWeight: 800, color: "#ef4444" }}
+                            value={r.receipt.total_amount}
+                            onChange={(e) => handleResultEdit(i, { total_amount: Number(e.target.value) })}
+                          />
                         </div>
-                      )}
-                      <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>
-                        {r.receipt.items.length} 項品目
+                      </div>
+
+                      {/* Items List (Editable) */}
+                      <div style={{ background: "#f8fafc", borderRadius: 12, padding: 8, display: "flex", flexDirection: "column", gap: 6 }}>
+                        {r.receipt.items.map((item, idx) => (
+                          <div key={idx} style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                            <input
+                              type="text"
+                              style={{ ...s.input, padding: "2px 6px", fontSize: 12, flex: 2 }}
+                              value={item.name}
+                              onChange={(e) => {
+                                const newItems = [...r.receipt!.items];
+                                newItems[idx] = { ...item, name: e.target.value };
+                                handleResultEdit(i, { items: newItems });
+                              }}
+                            />
+                            <input
+                              type="number"
+                              style={{ ...s.input, padding: "2px 6px", fontSize: 12, flex: 1, textAlign: "right" }}
+                              value={item.price}
+                              onChange={(e) => {
+                                const newItems = [...r.receipt!.items];
+                                newItems[idx] = { ...item, price: Number(e.target.value) };
+                                handleResultEdit(i, { items: newItems });
+                              }}
+                            />
+                            <span style={{ fontSize: 11, color: "#94a3b8" }}>x</span>
+                            <input
+                              type="number"
+                              style={{ ...s.input, padding: "2px 6px", fontSize: 12, width: 35, textAlign: "center" }}
+                              value={item.quantity}
+                              onChange={(e) => {
+                                const newItems = [...r.receipt!.items];
+                                newItems[idx] = { ...item, quantity: Number(e.target.value) };
+                                handleResultEdit(i, { items: newItems });
+                              }}
+                            />
+                          </div>
+                        ))}
+                      </div>
+
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <div style={{ fontSize: 11, color: "#94a3b8" }}>
+                          {r.receipt.currency === "TWD" ? "台幣計價" : `匯率後：NT$ ${convertTwd(r.receipt)?.toLocaleString()}`}
+                        </div>
                       </div>
                     </div>
                   ) : (

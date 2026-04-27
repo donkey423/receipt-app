@@ -29,31 +29,20 @@ export default async function handler(req: Request) {
       return new Response(JSON.stringify({ error: "未提供圖片" }), { status: 400 });
     }
 
-    const prompt = `收據辨識：
-${targetCurrency ? `幣別：${targetCurrency}` : ""}
-1. 提取商品、單價、數量。
-2. 折扣記錄為單項且價格為負。
-3. total_amount 需與 items 加總一致。
-4. 日期：YYYY-MM-DD。
+    const prompt = `高速收據OCR，只輸出JSON。${targetCurrency ? `優先使用幣別${targetCurrency}。` : ""}
+不是收據/無總額/無品項：{"is_receipt":false,"rejection_reason":"原因"}
+是收據：{"is_receipt":true,"currency":"代碼","total_amount":數字,"date":"YYYY-MM-DD","items":[{"name":"名稱","price":單價,"quantity":數量}]}
+折扣用負數品項；total_amount等於items加總。`;
 
-格式 (JSON)：
-{
-  "currency": "代碼",
-  "total_amount": 數字,
-  "date": "YYYY-MM-DD",
-  "items": [ { "name": "名稱", "price": 價格, "quantity": 數量 } ]
-}`;
-
-    // 使用速度更快的 gemini-2.5-flash 或 gemini-2.0-flash-lite
-    // 這裡預設使用最新高速度的 2.5 flash
+    // 速度優先：lite 模型搭配短 prompt 與較小輸出上限。
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${apiKey}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           contents: [{ parts: [{ inline_data: { mime_type: mediaType || "image/webp", data: image } }, { text: prompt }] }],
-          generationConfig: { temperature: 0.1, maxOutputTokens: 4096, responseMimeType: "application/json" },
+          generationConfig: { temperature: 0, maxOutputTokens: 2048, responseMimeType: "application/json" },
           safetySettings: [
             { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
             { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
@@ -82,6 +71,16 @@ ${targetCurrency ? `幣別：${targetCurrency}` : ""}
 
     try {
       const receipt = JSON.parse(text);
+      if (receipt?.is_receipt === false) {
+        return new Response(JSON.stringify({ error: receipt.rejection_reason || "這張圖片看起來不是收據，未建立紀錄" }), {
+          status: 422,
+          headers: {
+            "Access-Control-Allow-Origin": "*",
+            "Content-Type": "application/json",
+          }
+        });
+      }
+
       return new Response(JSON.stringify(receipt), { 
         status: 200,
         headers: {

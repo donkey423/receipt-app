@@ -1,8 +1,10 @@
-import { ChangeEvent, FormEvent, useState, useEffect } from "react";
-import { createReceipt, fetchReceipts, ReceiptItem } from "../lib/supabase";
+import { ChangeEvent, FormEvent, useState } from "react";
+import { createReceipt, ReceiptItem } from "../lib/supabase";
 
 /* ── Types ── */
 interface ReceiptData {
+  is_receipt?: boolean;
+  rejection_reason?: string;
   currency: string;
   total_amount: number;
   category?: string;
@@ -60,8 +62,31 @@ const DESTINATIONS = [
   { id: "tw", name: "🇹🇼 台灣", currency: "TWD", rate: 1 },
 ];
 
+const MAX_OCR_ATTEMPTS = 1;
+
+function getReceiptValidationError(receipt: Partial<ReceiptData> | null | undefined) {
+  if (!receipt) return "辨識結果格式不完整，無法儲存";
+  if (receipt.is_receipt === false) return receipt.rejection_reason || "這張圖片看起來不是收據，未建立紀錄";
+  if (!receipt.currency) return "辨識結果缺少幣別，無法儲存";
+  if (!Number.isFinite(Number(receipt.total_amount)) || Number(receipt.total_amount) <= 0) {
+    return "辨識結果缺少有效總額，無法儲存";
+  }
+  if (!Array.isArray(receipt.items) || receipt.items.length === 0) {
+    return "辨識結果沒有可儲存的品項";
+  }
+
+  const hasValidItem = receipt.items.some((item) => {
+    const name = item.name?.trim();
+    const price = Number(item.price);
+    const quantity = Number(item.quantity);
+    return Boolean(name) && Number.isFinite(price) && Number.isFinite(quantity) && quantity > 0;
+  });
+
+  return hasValidItem ? null : "辨識結果沒有有效品項，無法儲存";
+}
+
 /* ── Image Resize ── */
-function resizeImage(file: File, maxDim = 800): Promise<{ base64: string; mediaType: string; previewUrl: string }> {
+function resizeImage(file: File, maxDim = 640): Promise<{ base64: string; mediaType: string; previewUrl: string }> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -76,7 +101,7 @@ function resizeImage(file: File, maxDim = 800): Promise<{ base64: string; mediaT
         canvas.width = w;
         canvas.height = h;
         canvas.getContext("2d")!.drawImage(img, 0, 0, w, h);
-        const dataUrl = canvas.toDataURL("image/webp", 0.7);
+        const dataUrl = canvas.toDataURL("image/webp", 0.62);
         resolve({ base64: dataUrl.split(",")[1], mediaType: "image/webp", previewUrl: dataUrl });
       };
       img.onerror = () => reject(new Error("圖片載入失敗"));
@@ -217,7 +242,7 @@ export default function ReceiptRecorderCard({ mutate, receiptCount, existingNote
     let success = false;
     let lastErr = "辨識失敗";
 
-    while (attempt < 3 && !success) {
+    while (attempt < MAX_OCR_ATTEMPTS && !success) {
       attempt++;
       try {
         const res = await fetch("/api/ocr", {
@@ -230,7 +255,16 @@ export default function ReceiptRecorderCard({ mutate, receiptCount, existingNote
           }),
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || `辨識失敗 (${res.status})`);
+        if (!res.ok) {
+          lastErr = data.error || `辨識失敗 (${res.status})`;
+          break;
+        }
+
+        const validationError = getReceiptValidationError(data);
+        if (validationError) {
+          lastErr = validationError;
+          break;
+        }
         
         const newRes: OcrResult = {
           image: img,
@@ -241,14 +275,14 @@ export default function ReceiptRecorderCard({ mutate, receiptCount, existingNote
         success = true;
       } catch (err: any) {
         lastErr = err.message || "未知錯誤";
-        if (attempt < 3) await new Promise(r => setTimeout(r, attempt * 1000));
+        if (attempt < MAX_OCR_ATTEMPTS) await new Promise(r => setTimeout(r, attempt * 500));
       }
     }
 
     if (!success) {
       setResults(prev => [{
         image: img, receipt: null,
-        error: attempt > 1 ? `重試失敗: ${lastErr}` : lastErr, 
+        error: lastErr, 
         saving: false, saved: false,
       }, ...prev]);
     }
@@ -273,6 +307,11 @@ export default function ReceiptRecorderCard({ mutate, receiptCount, existingNote
   const handleSaveOne = async (index: number) => {
     const r = results[index];
     if (!r?.receipt) return;
+    const validationError = getReceiptValidationError(r.receipt);
+    if (validationError) {
+      setResults(prev => prev.map((p, i) => i === index ? { ...p, error: validationError } : p));
+      return;
+    }
 
     setResults(prev => prev.map((p, i) => i === index ? { ...p, saving: true } : p));
     try {

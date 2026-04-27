@@ -78,6 +78,10 @@ const s: Record<string, React.CSSProperties> = {
     borderRadius: 10, padding: "8px 16px", fontSize: 13,
     fontWeight: 600, cursor: "pointer", width: "100%", marginTop: 8,
   },
+  input: {
+    width: "100%", padding: "10px", borderRadius: 10, border: "1px solid #cbd5e1",
+    fontSize: 16, outline: "none", boxSizing: "border-box", background: "#fff",
+  },
 };
 
 /* ── Props ── */
@@ -313,7 +317,7 @@ export default function ReceiptList({ receipts, loading, mutate, existingNotes, 
                               <label style={{ fontSize: 11, color: "#64748b", display: "block", marginBottom: 4 }}>台幣金額 (TWD)</label>
                               <input 
                                 type="number" 
-                                style={{ width: "100%", padding: "10px", borderRadius: 10, border: "1px solid #cbd5e1", fontSize: 16, fontWeight: 700 }}
+                                style={s.input}
                                 value={editAmount}
                                 onChange={(e) => setEditAmount(Number(e.target.value))}
                               />
@@ -323,7 +327,7 @@ export default function ReceiptList({ receipts, loading, mutate, existingNotes, 
                               <input 
                                 type="text" 
                                 list="existing-notes"
-                                style={{ width: "100%", padding: "10px", borderRadius: 10, border: "1px solid #cbd5e1", fontSize: 14 }}
+                                style={{ ...s.input, fontSize: 14 }}
                                 value={editNote}
                                 onChange={(e) => setEditNote(e.target.value)}
                                 placeholder="如：姐姐"
@@ -379,32 +383,32 @@ export default function ReceiptList({ receipts, loading, mutate, existingNotes, 
                                 ✎ 修改金額/備註
                               </button>
                             </div>
+                            {(r.items || []).map((item, i) => (
+                              <div
+                                key={i}
+                                style={{
+                                  display: "flex", justifyContent: "space-between",
+                                  padding: "6px 0",
+                                  borderBottom: i < (r.items?.length || 0) - 1 ? "1px solid #e2e8f0" : "none",
+                                }}
+                              >
+                                <div style={{ display: "flex", flexDirection: "column" }}>
+                                  <span style={{ fontSize: 13, fontWeight: 600 }}>{item.name}</span>
+                                  {item.note && (
+                                    <span style={{ fontSize: 11, color: "#2563eb", fontWeight: 700 }}>👤 {item.note}</span>
+                                  )}
+                                </div>
+                                <span style={{ fontSize: 13, color: "#64748b" }}>
+                                  {currencySymbols[r.currency] || ""}{item.price?.toLocaleString()} × {item.quantity}
+                                </span>
+                              </div>
+                            ))}
+                            {r.currency !== "TWD" && r.exchange_rate && (
+                              <div style={{ marginTop: 8, fontSize: 12, color: "#94a3b8" }}>
+                                匯率：{r.exchange_rate}
+                              </div>
+                            )}
                           </>
-                        )}
-                        {(r.items || []).map((item, i) => (
-                          <div
-                            key={i}
-                            style={{
-                              display: "flex", justifyContent: "space-between",
-                              padding: "6px 0",
-                              borderBottom: i < (r.items?.length || 0) - 1 ? "1px solid #e2e8f0" : "none",
-                            }}
-                          >
-                            <div style={{ display: "flex", flexDirection: "column" }}>
-                              <span style={{ fontSize: 13, fontWeight: 600 }}>{item.name}</span>
-                              {item.note && (
-                                <span style={{ fontSize: 11, color: "#2563eb", fontWeight: 700 }}>👤 {item.note}</span>
-                              )}
-                            </div>
-                            <span style={{ fontSize: 13, color: "#64748b" }}>
-                              {currencySymbols[r.currency] || ""}{item.price?.toLocaleString()} × {item.quantity}
-                            </span>
-                          </div>
-                        ))}
-                        {r.currency !== "TWD" && r.exchange_rate && (
-                          <div style={{ marginTop: 8, fontSize: 12, color: "#94a3b8" }}>
-                            匯率：{r.exchange_rate}
-                          </div>
                         )}
                         <button
                           style={{ ...s.deleteBtn, opacity: deleting === r.id ? 0.5 : 1 }}

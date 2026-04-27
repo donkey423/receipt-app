@@ -22,6 +22,7 @@ interface OcrResult {
 type InputMode = "camera" | "manual";
 
 interface ManualFormState {
+  itemName: string;
   amount: string;
   date: string;
   note: string;
@@ -180,6 +181,7 @@ export default function ReceiptRecorderCard({ mutate, receiptCount, existingNote
   const [exchangeRate, setExchangeRate] = useState(0.22);
   const [isRateLoading, setIsRateLoading] = useState(false);
   const [manualForm, setManualForm] = useState<ManualFormState>({ 
+    itemName: "",
     amount: "", 
     date: todayISODate(),
     note: ""
@@ -367,7 +369,7 @@ export default function ReceiptRecorderCard({ mutate, receiptCount, existingNote
         exchange_rate: currency !== "TWD" ? exchangeRate : null,
         category: "其他",
         icon: "🧾",
-        items: [{ name: "手動記帳", price: amount, quantity: 1 }],
+        items: [{ name: manualForm.itemName || "手動記帳", price: amount, quantity: 1 }],
         created_at: new Date(manualForm.date).toISOString(),
         note: manualForm.note || null,
         trip_name: tripName,
@@ -407,7 +409,7 @@ export default function ReceiptRecorderCard({ mutate, receiptCount, existingNote
   const handleReset = () => {
     setImages([]); setResults([]); setError("");
     setManualReceipt(null); setManualSaved(false);
-    setManualForm({ amount: "", date: todayISODate(), note: "" });
+    setManualForm({ itemName: "", amount: "", date: todayISODate(), note: "" });
   };
 
   const successCount = results.filter(r => r.receipt && !r.error).length;
@@ -544,6 +546,12 @@ export default function ReceiptRecorderCard({ mutate, receiptCount, existingNote
             </div>
           ) : (
             <form style={{ display: "flex", flexDirection: "column", gap: 14 }} onSubmit={handleManualSubmit}>
+              <div>
+                <label style={s.label}>🏷️ 品項名稱 (選填)</label>
+                <input type="text" placeholder="例如：晚餐、車票..."
+                  style={s.input} value={manualForm.itemName}
+                  onChange={(e) => setManualForm((p) => ({ ...p, itemName: e.target.value }))} />
+              </div>
               <div>
                 <label style={s.label}>總金額</label>
                 <input type="number" min="0" step="0.01" placeholder="請輸入金額"

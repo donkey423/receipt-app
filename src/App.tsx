@@ -1,9 +1,10 @@
-import { useState, useMemo } from "react";
+import { lazy, Suspense, useState, useMemo } from "react";
 import useSWR from "swr";
 import { DEFAULT_TRIP_NAME, fetchReceipts, type Receipt } from "./lib/supabase";
 import ReceiptRecorderCard from "./components/ReceiptRecorderCard";
-import ReceiptList from "./components/ReceiptList";
-import SettlementView from "./components/SettlementView";
+
+const ReceiptList = lazy(() => import("./components/ReceiptList"));
+const SettlementView = lazy(() => import("./components/SettlementView"));
 
 type Tab = "record" | "list" | "settlement";
 
@@ -47,6 +48,7 @@ export default function App() {
   const [tripName, setTripNameState] = useState(() => {
     return localStorage.getItem("active_trip_name") || DEFAULT_TRIP_NAME;
   });
+  const [mountedTabs, setMountedTabs] = useState<Set<Tab>>(() => new Set(["record"]));
 
   const setTripName = (next: string) => {
     setTripNameState(next);
@@ -59,6 +61,16 @@ export default function App() {
     () => fetchReceipts(activeTripName)
   );
   const error = fetchError ? fetchError.message : "";
+
+  const changeTab = (nextTab: Tab) => {
+    setTab(nextTab);
+    setMountedTabs((prev) => {
+      if (prev.has(nextTab)) return prev;
+      const next = new Set(prev);
+      next.add(nextTab);
+      return next;
+    });
+  };
 
   const existingNotes = useMemo(() => {
     const notes = new Set<string>();
@@ -119,12 +131,18 @@ export default function App() {
           onTripNameChange={setTripName}
         />
       </div>
-      <div style={{ display: tab === "list" ? "block" : "none" }}>
-        <ReceiptList receipts={receipts} loading={loading} mutate={mutate} existingNotes={existingNotes} tripName={activeTripName} />
-      </div>
-      <div style={{ display: tab === "settlement" ? "block" : "none" }}>
-        <SettlementView receipts={receipts} loading={loading} />
-      </div>
+      <Suspense fallback={<div style={{ display: "flex", justifyContent: "center", padding: 50 }}><div className="spinner" /></div>}>
+        {mountedTabs.has("list") && (
+          <div style={{ display: tab === "list" ? "block" : "none" }}>
+            <ReceiptList receipts={receipts} loading={loading} mutate={mutate} existingNotes={existingNotes} tripName={activeTripName} />
+          </div>
+        )}
+        {mountedTabs.has("settlement") && (
+          <div style={{ display: tab === "settlement" ? "block" : "none" }}>
+            <SettlementView receipts={receipts} loading={loading} />
+          </div>
+        )}
+      </Suspense>
 
       {/* Bottom Nav */}
       <nav style={navStyle.bar}>
@@ -135,7 +153,7 @@ export default function App() {
               ...navStyle.btn,
               color: tab === t.key ? "#2563eb" : "#94a3b8",
             }}
-            onClick={() => setTab(t.key)}
+            onClick={() => changeTab(t.key)}
           >
             <span style={{ fontSize: 22, lineHeight: 1 }}>{t.icon}</span>
             <span style={{ fontSize: 10, fontWeight: tab === t.key ? 700 : 500 }}>{t.label}</span>

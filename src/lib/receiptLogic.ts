@@ -23,6 +23,8 @@ export interface SettlementItem extends ReceiptItem {
   currency: string;
 }
 
+const SELF_LABEL = "我 (我自己)";
+
 export const KNOWN_CURRENCIES = new Set([
   "TWD", "JPY", "USD", "EUR", "HKD", "THB", "KRW",
   "CHF", "ISK", "VND", "SGD", "CNY", "GBP", "AUD",
@@ -109,7 +111,7 @@ export function receiptSettlementItems(receipt: Receipt): SettlementItem[] {
       ...item,
       receiptId: receipt.id,
       date: receipt.created_at,
-      effectiveNote: item.note || receipt.note || "我 (我自己)",
+      effectiveNote: item.note?.trim() || receipt.note?.trim() || SELF_LABEL,
       itemTwd,
       currency: receipt.currency,
     };

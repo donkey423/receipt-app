@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { type Receipt } from "../lib/supabase";
 import { receiptSettlementItems } from "../lib/receiptLogic";
 
@@ -42,8 +42,10 @@ interface Props {
   loading: boolean;
 }
 
+const SELF_LABEL = "我 (我自己)";
+
 export default function SettlementView({ receipts, loading }: Props) {
-  const [selectedPerson, setSelectedPerson] = useState<string>("我 (我自己)");
+  const [selectedPerson, setSelectedPerson] = useState<string>(SELF_LABEL);
 
   const allItems = useMemo(() => {
     return receipts.flatMap(receiptSettlementItems);
@@ -51,11 +53,17 @@ export default function SettlementView({ receipts, loading }: Props) {
 
   const people = useMemo(() => {
     return Array.from(new Set(allItems.map(i => i.effectiveNote))).sort((a, b) => {
-      if (a === "我 (我自己)") return -1;
-      if (b === "我 (我自己)") return 1;
+      if (a === SELF_LABEL) return -1;
+      if (b === SELF_LABEL) return 1;
       return a.localeCompare(b);
     });
   }, [allItems]);
+
+  useEffect(() => {
+    if (people.length > 0 && !people.includes(selectedPerson)) {
+      setSelectedPerson(people[0]);
+    }
+  }, [people, selectedPerson]);
 
   const filteredItems = useMemo(() => {
     return allItems.filter(i => i.effectiveNote === selectedPerson);
@@ -90,10 +98,27 @@ export default function SettlementView({ receipts, loading }: Props) {
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {personTotals.map(([name, total]) => (
-            <div key={name} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 4px", borderBottom: "1px dotted #e2e8f0" }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: name === "我 (我自己)" ? "#2563eb" : "#475569" }}>{name}</div>
+            <button
+              key={name}
+              type="button"
+              onClick={() => setSelectedPerson(name)}
+              style={{
+                width: "100%",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                padding: "10px 8px",
+                border: "none",
+                borderBottom: "1px dotted #e2e8f0",
+                borderRadius: 10,
+                background: selectedPerson === name ? "#eff6ff" : "transparent",
+                cursor: "pointer",
+                fontFamily: "inherit",
+              }}
+            >
+              <div style={{ fontSize: 14, fontWeight: 700, color: name === SELF_LABEL ? "#2563eb" : "#475569" }}>{name}</div>
               <div style={{ fontSize: 15, fontWeight: 800, color: "#1e293b" }}>NT$ {total.toLocaleString()}</div>
-            </div>
+            </button>
           ))}
           {personTotals.length === 0 && <div style={s.empty}>暫無資料</div>}
         </div>
@@ -109,6 +134,7 @@ export default function SettlementView({ receipts, loading }: Props) {
             }}
             value={selectedPerson}
             onChange={(e) => setSelectedPerson(e.target.value)}
+            disabled={people.length === 0}
           >
             {people.map(p => <option key={p} value={p}>{p}</option>)}
           </select>
